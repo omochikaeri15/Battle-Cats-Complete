@@ -7,3 +7,4 @@ pub mod metadata;
 mod modify;
 mod pack;
 pub mod encrypt;
+mod sign;

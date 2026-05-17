@@ -5,9 +5,8 @@ use std::path::PathBuf;
 use crate::features::mods::logic::state::{ModState, TargetRegion};
 use crate::features::data::utilities::keys;
 use crate::features::settings::logic::state::Settings;
-
-use crate::features::addons::apktool::{apk, sign, xapk};
-use crate::features::mods::logic::{modify, pack};
+use crate::features::addons::apktool::{apk, xapk};
+use crate::features::mods::logic::{modify, pack, sign};
 
 pub enum ExportEvent {
     Log(String),
@@ -17,7 +16,6 @@ pub enum ExportEvent {
 
 static EVENT_RECEIVER: Mutex<Option<Receiver<ExportEvent>>> = Mutex::new(None);
 
-/// Helper to bridge pure string channels to our custom ExportEvent enum
 fn spawn_log_adapter(event_tx: Sender<ExportEvent>) -> Sender<String> {
     let (str_tx, str_rx) = mpsc::channel();
     thread::spawn(move || {
@@ -37,7 +35,6 @@ pub fn start_apk_export(state: &mut ModState) {
     let suffix = state.export.package_suffix.clone();
     let Some(mod_folder) = state.selected_mod.clone() else { state.export.is_busy = false; return; };
     let Some(input_apk_path) = state.export.selected_apk.clone() else { state.export.is_busy = false; return; };
-    let java_sign_type = state.export.sign_type.clone();
     let detected_region = state.export.target_region.clone();
 
     let (tx, rx) = mpsc::channel();
@@ -48,7 +45,6 @@ pub fn start_apk_export(state: &mut ModState) {
 
         let settings: Settings = crate::global::io::json::load("settings.json").unwrap_or_default();
 
-        // Guard: Validate Keys via Central Helper
         let user_keys = match keys::verify(settings.game_data.enforce_key_validation, &str_tx) {
             Ok(k) => k,
             Err(e) => {
@@ -85,20 +81,25 @@ pub fn start_apk_export(state: &mut ModState) {
         };
 
         if !is_xapk && suffix.trim().is_empty() {
-            log_cb("Fast Lane conditions met. Bypassing Java for native injection...".to_string());
+            log_cb("Fast Lane conditions met. Bypassing Apktool...".to_string());
 
             let final_apk_path = export_dir.join("battlecats_modded.apk");
             let unsigned_temp = workspace_dir.join("unsigned_fast.apk");
 
-            log_cb("Applying native V2 Signature...".to_string());
             let _ = fs::rename(&unsigned_temp, &final_apk_path);
+
+            log_cb("Applying native V2 Signature...".to_string());
+            if let Err(e) = sign::sign(&final_apk_path, None) {
+                let _ = tx.send(ExportEvent::Error(format!("Fast Lane Signing Error: {}", e))); return;
+            }
+
             let _ = fs::remove_dir_all(&workspace_dir);
 
             let _ = tx.send(ExportEvent::Success);
             return;
         }
 
-        log_cb("Deep Patch required. Initializing Java environment...".to_string());
+        log_cb("Deep Patch required. Initializing environment...".to_string());
 
         let _ = fs::remove_dir_all(&decode_dir);
         let mut working_apk = input_apk_path.clone();
@@ -136,9 +137,17 @@ pub fn start_apk_export(state: &mut ModState) {
         }
 
         let output_apk = export_dir.join(format!("{}.apk", final_id));
-        if let Err(e) = sign::sign_apk(&unsigned_apk_path, &output_apk, &java_sign_type, &log_cb) {
-            let _ = tx.send(ExportEvent::Error(format!("Signing Error: {}", e))); return;
+
+        log_cb("Copying built APK to export directory...".to_string());
+        if let Err(e) = fs::copy(&unsigned_apk_path, &output_apk) {
+            let _ = tx.send(ExportEvent::Error(format!("Filesystem Error: {}", e))); return;
         }
+
+        log_cb("Applying Native V2 Signature...".to_string());
+        if let Err(e) = sign::sign(&output_apk, None) {
+            let _ = tx.send(ExportEvent::Error(format!("Native Signing Error: {}", e))); return;
+        }
+        log_cb("Native Signature Applied Successfully!".to_string());
 
         let _ = fs::remove_dir_all(&workspace_dir);
         let _ = fs::remove_dir_all(&decode_dir);
@@ -165,7 +174,6 @@ pub fn start_pack_export(state: &mut ModState) {
 
         let settings: Settings = crate::global::io::json::load("settings.json").unwrap_or_default();
 
-        // Guard: Validate Keys via Central Helper
         let user_keys = match keys::verify(settings.game_data.enforce_key_validation, &str_tx) {
             Ok(k) => k,
             Err(e) => {
