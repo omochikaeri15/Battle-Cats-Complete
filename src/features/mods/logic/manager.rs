@@ -3,10 +3,10 @@ use std::sync::mpsc;
 use std::fs;
 use std::thread;
 use crate::features::mods::import::decrypt;
-use crate::features::mods::import::bridge;
+use crate::features::addons::adb::mods;
 use crate::features::mods::logic::state::{ModPackType, ModState};
 use crate::features::mods::import::extract;
-use crate::features::mods::import::bridge::ModAdbEvent;
+use crate::features::addons::adb::mods::ModAdbEvent;
 
 pub fn process_events(state: &mut ModState) -> bool {
     process_adb_events(state);
@@ -58,7 +58,7 @@ pub fn start_adb_import(state: &mut ModState) {
 
     let (tx, rx) = mpsc::channel();
     state.import.adb_rx = Some(rx);
-    bridge::spawn_mod_import(tx, state.import.package_suffix.clone());
+    mods::spawn_mod_import(tx, state.import.package_suffix.clone());
 }
 
 pub fn start_pack_import(state: &mut ModState, path: PathBuf) {
