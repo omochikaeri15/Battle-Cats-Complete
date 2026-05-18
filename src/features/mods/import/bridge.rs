@@ -3,7 +3,7 @@ use std::thread;
 use std::sync::mpsc::Sender;
 use std::fs;
 use crate::features::addons::adb::driver; 
-use super::extract;
+use crate::features::mods::import::extract;
 
 pub enum ModAdbEvent {
     Status(String),

@@ -2,9 +2,11 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::fs;
 use std::thread;
-use crate::features::mods::logic::state::{ModState, ModPackType};
-use crate::features::mods::logic::{bridge, extract, decrypt};
-use crate::features::mods::logic::bridge::ModAdbEvent;
+use crate::features::mods::import::decrypt;
+use crate::features::mods::import::bridge;
+use crate::features::mods::logic::state::{ModPackType, ModState};
+use crate::features::mods::import::extract;
+use crate::features::mods::import::bridge::ModAdbEvent;
 
 pub fn process_events(state: &mut ModState) -> bool {
     process_adb_events(state);

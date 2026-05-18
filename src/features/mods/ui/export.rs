@@ -1,9 +1,10 @@
 use eframe::egui;
-use crate::features::mods::logic::state::{ModState, ExportType, PatchMode};
+use crate::features::mods::logic::state::{ExportType, ModState, PatchMode};
 use crate::global::region::Region;
 use crate::features::settings::logic::Settings;
-use crate::features::mods::logic::{encrypt, metadata};
+use crate::features::mods::logic::metadata;
 use crate::features::addons::toolpaths::{self, Presence};
+use crate::features::mods::export::encrypt;
 
 pub fn show(ctx: &egui::Context, state: &mut ModState, _settings: &Settings) {
     let mut is_open = state.export.is_open;

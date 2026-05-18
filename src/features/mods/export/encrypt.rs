@@ -7,7 +7,8 @@ use crate::global::region::Region;
 use crate::features::data::utilities::keys;
 use crate::features::settings::logic::state::Settings;
 use crate::features::addons::apktool::{apk, xapk};
-use crate::features::mods::logic::{modify, pack, sign};
+use crate::features::mods::export::{modify, sign};
+use crate::features::mods::export::pack;
 
 pub enum ExportEvent {
     Log(String),
@@ -54,7 +55,7 @@ pub fn start_apk_export(state: &mut ModState) {
             }
         };
 
-        let base_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        let base_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("../../../.."));
         let mod_dir = base_dir.join("mods").join(&mod_folder);
         let workspace_dir = mod_dir.join("apk_workspace");
         let decode_dir = mod_dir.join("apktool_decode");
@@ -183,7 +184,7 @@ pub fn start_pack_export(state: &mut ModState) {
             }
         };
 
-        let base_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        let base_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("../../../.."));
         let mod_path = base_dir.join("mods").join(&mod_folder);
         let export_dir = base_dir.join("exports");
         let _ = std::fs::create_dir_all(&export_dir);

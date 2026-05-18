@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use serde::{Serialize, Deserialize};
 use crate::features::data::state::ImportSubTab;
 use crate::global::ui::shared::DragGuard;
-use crate::features::mods::logic::bridge::ModAdbEvent;
+use crate::features::mods::import::bridge::ModAdbEvent;
 use crate::features::mods::logic::metadata::ModMetadata;
 use crate::global::region::Region;
 
