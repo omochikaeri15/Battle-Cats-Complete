@@ -101,25 +101,26 @@ pub fn run_universal_import(
 
         let mut discovered_list_files = Vec::new();
         let mut discovered_apk_files = Vec::new();
-        let mut discovered_audio_files = Vec::new();
+        let mut discovered_loose_files = Vec::new();
 
-        let _ = apk::find_files(source_directory, &mut discovered_list_files, &mut discovered_apk_files, &mut discovered_audio_files);
+        let _ = apk::find_files(source_directory, &mut discovered_list_files, &mut discovered_apk_files, &mut discovered_loose_files);
 
         if !discovered_apk_files.is_empty() && !has_notified_extraction {
             let _ = status_sender.send("Extracting update data...".to_string());
             has_notified_extraction = true;
         }
-
-        let (mut new_list_paths, mut new_temp_dirs) = apk::extract_all(&discovered_apk_files);
+        
+        let (mut new_list_paths, mut new_temp_dirs, mut new_loose_paths) = apk::extract_all(&discovered_apk_files);
 
         discovered_list_files.append(&mut new_list_paths);
         global_temporary_directories.append(&mut new_temp_dirs);
+        discovered_loose_files.append(&mut new_loose_paths);
 
         let calculated_chrono_score = chrono::calculate(source_directory, &global_temporary_directories);
 
-        for audio_path in discovered_audio_files {
-            let filename = audio_path.file_name().unwrap_or_default().to_string_lossy().into_owned();
-            let byte_size = fs::metadata(&audio_path).map(|m| m.len() as usize).unwrap_or(0);
+        for loose_path in discovered_loose_files {
+            let filename = loose_path.file_name().unwrap_or_default().to_string_lossy().into_owned();
+            let byte_size = fs::metadata(&loose_path).map(|m| m.len() as usize).unwrap_or(0);
 
             let matched_user_rule = compiled_regex_set.matches(&filename).into_iter().next().map(|index| &compiled_exception_rules[index]);
             if let Some(rule) = matched_user_rule { if rule.handling == RuleHandling::Ignore { continue; } }
@@ -153,7 +154,7 @@ pub fn run_universal_import(
             }
 
             let extraction_task = UniversalTask {
-                pack_path: audio_path,
+                pack_path: loose_path,
                 original_name: filename,
                 final_name: final_resolved_filename.clone(),
                 byte_offset: 0,

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::fs;
 use std::sync::mpsc::Receiver;
 
-use crate::features::addons::toolpaths::{get_tools_dir, AddonStatus, JAVA_BIN, APKTOOL_JAR, UBER_SIGNER_JAR, APKEDITOR_JAR};
+use crate::features::addons::toolpaths::{get_tools_dir, AddonStatus, JAVA_BIN, APKTOOL_JAR, APKEDITOR_JAR};
 use crate::features::addons::manager::{self, DownloadConfig};
 
 pub struct ApktoolManager {
@@ -71,16 +71,11 @@ pub fn get_jar_path() -> Option<PathBuf> {
     if jar.exists() { Some(jar) } else { None }
 }
 
-pub fn get_signer_path() -> Option<PathBuf> {
-    let jar = get_apktool_dir().join(UBER_SIGNER_JAR);
-    if jar.exists() { Some(jar) } else { None }
-}
-
 pub fn get_apkeditor_path() -> Option<PathBuf> {
     let jar = get_apktool_dir().join(APKEDITOR_JAR);
     if jar.exists() { Some(jar) } else { None }
 }
 
 pub fn is_installed() -> bool {
-    get_jar_path().is_some() && get_signer_path().is_some() && get_apkeditor_path().is_some()
+    get_jar_path().is_some() && get_apkeditor_path().is_some()
 }

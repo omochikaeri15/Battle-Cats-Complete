@@ -2,7 +2,8 @@ use std::sync::{mpsc::{self, Receiver, Sender}, Mutex};
 use std::thread;
 use std::fs;
 use std::path::PathBuf;
-use crate::features::mods::logic::state::{ModState, TargetRegion};
+use crate::features::mods::logic::state::ModState;
+use crate::global::region::Region;
 use crate::features::data::utilities::keys;
 use crate::features::settings::logic::state::Settings;
 use crate::features::addons::apktool::{apk, xapk};
@@ -68,10 +69,10 @@ pub fn start_apk_export(state: &mut ModState) {
         let is_xapk = input_apk_path.extension().and_then(|e| e.to_str()) == Some("xapk");
 
         let region_key = match detected_region {
-            TargetRegion::En => &user_keys.en,
-            TargetRegion::Jp => &user_keys.ja,
-            TargetRegion::Kr => &user_keys.ko,
-            TargetRegion::Tw => &user_keys.tw,
+            Region::En => &user_keys.en,
+            Region::Ja => &user_keys.ja,
+            Region::Ko => &user_keys.ko,
+            Region::Tw => &user_keys.tw,
         };
 
         let pack_result = pack::build_pack_and_list(&mod_dir, "DownloadLocal", region_key, &log_cb);
@@ -188,10 +189,10 @@ pub fn start_pack_export(state: &mut ModState) {
         let _ = std::fs::create_dir_all(&export_dir);
 
         let region_key = match target_region {
-            TargetRegion::En => &user_keys.en,
-            TargetRegion::Jp => &user_keys.ja,
-            TargetRegion::Kr => &user_keys.ko,
-            TargetRegion::Tw => &user_keys.tw,
+            Region::En => &user_keys.en,
+            Region::Ja => &user_keys.ja,
+            Region::Ko => &user_keys.ko,
+            Region::Tw => &user_keys.tw,
         };
 
         let log_cb = |msg: String| { let _ = tx.send(ExportEvent::Log(msg)); };

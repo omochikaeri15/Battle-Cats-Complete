@@ -191,7 +191,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut ModState, _settings: &mut Settings)
         }
         state.needs_rescan = true;
     }
-    
+
     crate::features::mods::ui::export::show(ui.ctx(), state, _settings);
 }
 
@@ -243,10 +243,8 @@ fn render_action_buttons(
 
         let export_btn = egui::Button::new("Export Mod").fill(egui::Color32::from_rgb(30, 100, 180));
         if ui.add_sized(BTN_SIZE, export_btn).clicked() {
+            // ROGUE CODE REMOVED HERE
             state.export.is_open = true;
-            if let Some(mod_idx) = state.loaded_mods.iter().position(|m| m.folder_name == mod_name) {
-                state.export.package_suffix = state.loaded_mods[mod_idx].metadata.package.clone();
-            }
         }
 
         if icon_state.completion_time.is_some() {

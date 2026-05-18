@@ -5,6 +5,7 @@ use crate::features::data::state::ImportSubTab;
 use crate::global::ui::shared::DragGuard;
 use crate::features::mods::logic::bridge::ModAdbEvent;
 use crate::features::mods::logic::metadata::ModMetadata;
+use crate::global::region::Region;
 
 #[derive(Clone, PartialEq, Default, Serialize, Deserialize, Debug)]
 pub enum ExportType {
@@ -14,21 +15,10 @@ pub enum ExportType {
 }
 
 #[derive(Clone, PartialEq, Default, Serialize, Deserialize, Debug)]
-pub enum SignType {
-    V1,
+pub enum PatchMode {
     #[default]
-    V2,
-    V3,
-    V4,
-}
-
-#[derive(Clone, PartialEq, Default, Serialize, Deserialize, Debug)]
-pub enum TargetRegion {
-    #[default]
-    En,
-    Jp,
-    Kr,
-    Tw,
+    Update,
+    Create,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -36,8 +26,9 @@ pub struct ExportState {
     #[serde(skip)] pub is_open: bool,
     #[serde(skip)] pub is_busy: bool,
     pub tab: ExportType,
-    pub sign_type: SignType,
-    pub target_region: TargetRegion,
+    pub patch_mode: PatchMode,
+    pub target_region: Region,
+    pub app_title: String,
     pub package_suffix: String,
     pub pack_name: String,
     #[serde(skip)] pub selected_apk: Option<PathBuf>,
@@ -51,8 +42,9 @@ impl Default for ExportState {
             is_open: false,
             is_busy: false,
             tab: ExportType::Apk,
-            sign_type: SignType::V2,
-            target_region: TargetRegion::En,
+            patch_mode: PatchMode::Update,
+            target_region: Region::En,
+            app_title: String::new(),
             package_suffix: String::new(),
             pack_name: String::new(),
             selected_apk: None,

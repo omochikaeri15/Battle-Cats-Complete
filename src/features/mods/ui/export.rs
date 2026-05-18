@@ -1,7 +1,9 @@
 use eframe::egui;
-use crate::features::mods::logic::state::{ModState, ExportType, SignType, TargetRegion};
+use crate::features::mods::logic::state::{ModState, ExportType, PatchMode};
+use crate::global::region::Region;
 use crate::features::settings::logic::Settings;
-use crate::features::mods::logic::encrypt;
+use crate::features::mods::logic::{encrypt, metadata};
+use crate::features::addons::toolpaths::{self, Presence};
 
 pub fn show(ctx: &egui::Context, state: &mut ModState, _settings: &Settings) {
     let mut is_open = state.export.is_open;
@@ -23,9 +25,7 @@ pub fn show(ctx: &egui::Context, state: &mut ModState, _settings: &Settings) {
         .constrain(false)
         .movable(allow_drag);
 
-    if let Some(position) = fixed_pos {
-        window = window.current_pos(position);
-    }
+    if let Some(position) = fixed_pos { window = window.current_pos(position); }
 
     window.show(ctx, |ui| {
         ui.horizontal(|ui| {
@@ -33,10 +33,7 @@ pub fn show(ctx: &egui::Context, state: &mut ModState, _settings: &Settings) {
             let active_color = egui::Color32::from_rgb(31, 106, 165);
             let inactive_color = egui::Color32::from_gray(60);
 
-            let tabs = [
-                (ExportType::Apk, "APK"),
-                (ExportType::Pack, "Pack"),
-            ];
+            let tabs = [(ExportType::Apk, "APK"), (ExportType::Pack, "Pack")];
 
             for (tab_enum, label) in tabs {
                 let is_active = state.export.tab == tab_enum;
@@ -50,21 +47,22 @@ pub fn show(ctx: &egui::Context, state: &mut ModState, _settings: &Settings) {
             }
         });
 
-        ui.add_space(15.0);
+        ui.add_space(10.0);
 
         match state.export.tab {
             ExportType::Apk => show_apk_view(ui, state),
             ExportType::Pack => show_pack_view(ui, state),
         }
 
-        ui.add_space(15.0);
+        ui.add_space(10.0);
         ui.separator();
 
         let status_message = &state.export.status_message;
         let is_processing = is_busy
             && !status_message.contains("Success")
             && !status_message.contains("Error")
-            && !status_message.contains("Failed");
+            && !status_message.contains("Failed")
+            && !status_message.contains("Complete");
 
         if is_processing {
             ui.horizontal(|ui| {
@@ -94,117 +92,186 @@ pub fn show(ctx: &egui::Context, state: &mut ModState, _settings: &Settings) {
 }
 
 fn show_apk_view(ui: &mut egui::Ui, state: &mut ModState) {
-    ui.label("Patch and sign an existing APK or XAPK file.");
-    ui.add_space(10.0);
+    let apktool_present = toolpaths::apktool_status() == Presence::Installed;
+    if !apktool_present && state.export.patch_mode == PatchMode::Create {
+        state.export.patch_mode = PatchMode::Update;
+        if let Some(path) = &state.export.selected_apk {
+            if path.extension().and_then(|e| e.to_str()) == Some("xapk") {
+                state.export.selected_apk = None;
+            }
+        }
+    }
+
+    if state.export.patch_mode == PatchMode::Create && !apktool_present {
+        ui.label(egui::RichText::new("Apktool Add-On Missing: Download through Settings > Add-Ons > Apktool")
+            .color(egui::Color32::from_rgb(255, 165, 0)));
+    } else {
+        ui.label("Update or create modded APK");
+    }
+
+    ui.add_space(5.0);
 
     ui.add_enabled_ui(!state.export.is_busy, |ui| {
         ui.horizontal(|ui| {
-            ui.label("Custom Suffix:");
-            ui.add(egui::TextEdit::singleline(&mut state.export.package_suffix)
-                .hint_text("None")
-                .desired_width(60.0));
-            ui.label(egui::RichText::new("(Used for side-by-side install)").weak().size(10.0));
-        });
+            ui.label("Patch:");
+            let prev_mode = state.export.patch_mode.clone();
 
-        ui.add_space(10.0);
-
-        ui.horizontal(|ui| {
-            ui.label("Target Region:");
-            egui::ComboBox::from_id_salt("export_region_type_apk")
-                .selected_text(match state.export.target_region {
-                    TargetRegion::En => "EN",
-                    TargetRegion::Jp => "JP",
-                    TargetRegion::Kr => "KR",
-                    TargetRegion::Tw => "TW",
+            egui::ComboBox::from_id_salt("patch_mode_combo")
+                .selected_text(match state.export.patch_mode {
+                    PatchMode::Update => "Update",
+                    PatchMode::Create => "Create",
                 })
                 .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut state.export.target_region, TargetRegion::En, "EN");
-                    ui.selectable_value(&mut state.export.target_region, TargetRegion::Jp, "JP");
-                    ui.selectable_value(&mut state.export.target_region, TargetRegion::Kr, "KR");
-                    ui.selectable_value(&mut state.export.target_region, TargetRegion::Tw, "TW");
+                    ui.selectable_value(&mut state.export.patch_mode, PatchMode::Update, "Update");
+                    ui.add_enabled_ui(apktool_present, |ui| {
+                        let res = ui.selectable_value(&mut state.export.patch_mode, PatchMode::Create, "Create");
+                        if !apktool_present {
+                            res.on_disabled_hover_text("Requires Apktool Add-On\nDownload through Settings > Add-Ons > Apktool");
+                        }
+                    });
+                });
+
+            if prev_mode != state.export.patch_mode {
+                if state.export.patch_mode == PatchMode::Update {
+                    if let Some(path) = &state.export.selected_apk {
+                        if path.extension().and_then(|e| e.to_str()) == Some("xapk") {
+                            state.export.selected_apk = None;
+                        }
+                    }
+                    state.export.app_title.clear();
+                    state.export.package_suffix.clear();
+                }
+            }
+        });
+
+        ui.add_space(4.0);
+
+        let is_create = state.export.patch_mode == PatchMode::Create;
+        let deep_patch_allowed = is_create && apktool_present;
+
+        ui.horizontal(|ui| {
+            let label = if deep_patch_allowed { egui::RichText::new("Title:") } else { egui::RichText::new("Title:").weak() };
+            ui.label(label);
+
+            let title_field = ui.add_enabled(deep_patch_allowed, egui::TextEdit::singleline(&mut state.export.app_title)
+                .desired_width(120.0));
+
+            if !is_create {
+                title_field.on_disabled_hover_text("Only available with Patch option \"Create\"");
+            } else if !apktool_present {
+                title_field.on_disabled_hover_text("Requires Apktool Add-On\nDownload through Settings > Add-Ons > Apktool");
+            }
+        });
+
+        ui.add_space(4.0);
+
+        ui.horizontal(|ui| {
+            let label = if deep_patch_allowed { egui::RichText::new("Package:") } else { egui::RichText::new("Package:").weak() };
+            ui.label(label);
+
+            let pkg_field = ui.add_enabled(deep_patch_allowed, egui::TextEdit::singleline(&mut state.export.package_suffix)
+                .desired_width(40.0));
+
+            if !is_create {
+                pkg_field.on_disabled_hover_text("Only available with Patch option \"Create\"");
+            } else if !apktool_present {
+                pkg_field.on_disabled_hover_text("Requires Apktool Add-On\nDownload through Settings > Add-Ons > Apktool");
+            }
+        });
+
+        if deep_patch_allowed && (state.export.app_title.is_empty() || state.export.package_suffix.is_empty()) {
+            if let Some(mod_folder) = &state.selected_mod {
+                let meta = metadata::ModMetadata::load(&std::path::Path::new("mods").join(mod_folder));
+                if state.export.app_title.is_empty() {
+                    state.export.app_title = meta.title;
+                }
+                if state.export.package_suffix.is_empty() {
+                    state.export.package_suffix = meta.package;
+                }
+            }
+        }
+
+        ui.add_space(4.0);
+
+        ui.horizontal(|ui| {
+            ui.label("Region:");
+            egui::ComboBox::from_id_salt("export_region_apk")
+                .selected_text(state.export.target_region.metadata().display_name)
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut state.export.target_region, Region::En, Region::En.metadata().display_name);
+                    ui.selectable_value(&mut state.export.target_region, Region::Ja, Region::Ja.metadata().display_name);
+                    ui.selectable_value(&mut state.export.target_region, Region::Ko, Region::Ko.metadata().display_name);
+                    ui.selectable_value(&mut state.export.target_region, Region::Tw, Region::Tw.metadata().display_name);
                 });
         });
 
-        ui.add_space(10.0);
+        ui.add_space(8.0);
 
         ui.horizontal(|ui| {
-            ui.label("Sign Type:");
-            egui::ComboBox::from_id_salt("export_sign_type")
-                .selected_text(match state.export.sign_type {
-                    SignType::V1 => "v1",
-                    SignType::V2 => "v2 (Recommended)",
-                    SignType::V3 => "v3",
-                    SignType::V4 => "v4",
-                })
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut state.export.sign_type, SignType::V1, "v1");
-                    ui.selectable_value(&mut state.export.sign_type, SignType::V2, "v2 (Recommended)");
-                    ui.selectable_value(&mut state.export.sign_type, SignType::V3, "v3");
-                    ui.selectable_value(&mut state.export.sign_type, SignType::V4, "v4");
-                });
-        });
+            let btn_text = if is_create { "Select (X)APK" } else { "Select APK" };
+            if ui.button(btn_text).clicked() {
+                let mut dialog = rfd::FileDialog::new();
+                if is_create {
+                    dialog = dialog.add_filter("Android App", &["apk", "xapk"]);
+                } else {
+                    dialog = dialog.add_filter("APK", &["apk"]);
+                }
 
-        ui.add_space(10.0);
-
-        ui.horizontal(|ui| {
-            if ui.button("Select App File").clicked() {
-                if let Some(file_path) = rfd::FileDialog::new()
-                    .add_filter("Android App", &["apk", "xapk"])
-                    .pick_file()
-                {
+                if let Some(file_path) = dialog.pick_file() {
                     state.export.selected_apk = Some(file_path);
                 }
             }
             if let Some(file_path) = &state.export.selected_apk {
                 ui.label(file_path.file_name().unwrap_or_default().to_string_lossy());
             } else {
-                ui.label("No file selected.");
+                ui.label("No file selected");
             }
         });
     });
 
-    ui.add_space(15.0);
+    ui.add_space(8.0);
 
-    let is_ready_to_export = state.export.selected_apk.is_some() && state.selected_mod.is_some();
-    if ui.add_enabled(!state.export.is_busy && is_ready_to_export, egui::Button::new("Apply Mod")).clicked() {
+    let is_ready = state.export.selected_apk.is_some() && state.selected_mod.is_some();
+    let can_apply = !state.export.is_busy && is_ready && !(state.export.patch_mode == PatchMode::Create && !apktool_present);
+
+    if ui.add_enabled(can_apply, egui::Button::new("Apply Mod")).clicked() {
         encrypt::start_apk_export(state);
     }
 }
 
 fn show_pack_view(ui: &mut egui::Ui, state: &mut ModState) {
-    ui.label("Compile mod files into raw .pack and .list files.");
-    ui.add_space(10.0);
+    ui.label("Compile mod files into raw .pack and .list files");
+    ui.add_space(5.0);
 
     ui.add_enabled_ui(!state.export.is_busy, |ui| {
         ui.horizontal(|ui| {
-            ui.label("Pack Name:");
+            ui.label("Name:");
+            let hint = egui::RichText::new("DownloadLocal").color(egui::Color32::GRAY);
             ui.add(egui::TextEdit::singleline(&mut state.export.pack_name)
-                .hint_text("mod")
-                .desired_width(150.0));
+                .hint_text(hint)
+                .desired_width(100.0));
         });
 
-        ui.add_space(10.0);
+        ui.add_space(4.0);
 
         ui.horizontal(|ui| {
-            ui.label("Target Region:");
-            egui::ComboBox::from_id_salt("export_region_type")
-                .selected_text(match state.export.target_region {
-                    TargetRegion::En => "EN",
-                    TargetRegion::Jp => "JP",
-                    TargetRegion::Kr => "KR",
-                    TargetRegion::Tw => "TW",
-                })
+            ui.label("Key:");
+            egui::ComboBox::from_id_salt("export_region_pack")
+                .selected_text(state.export.target_region.metadata().display_name)
                 .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut state.export.target_region, TargetRegion::En, "EN");
-                    ui.selectable_value(&mut state.export.target_region, TargetRegion::Jp, "JP");
-                    ui.selectable_value(&mut state.export.target_region, TargetRegion::Kr, "KR");
-                    ui.selectable_value(&mut state.export.target_region, TargetRegion::Tw, "TW");
+                    ui.selectable_value(&mut state.export.target_region, Region::En, Region::En.metadata().display_name);
+                    ui.selectable_value(&mut state.export.target_region, Region::Ja, Region::Ja.metadata().display_name);
+                    ui.selectable_value(&mut state.export.target_region, Region::Ko, Region::Ko.metadata().display_name);
+                    ui.selectable_value(&mut state.export.target_region, Region::Tw, Region::Tw.metadata().display_name);
                 });
         });
     });
 
-    ui.add_space(15.0);
+    ui.add_space(8.0);
     if ui.add_enabled(!state.export.is_busy && state.selected_mod.is_some(), egui::Button::new("Create Pack")).clicked() {
+        if state.export.pack_name.is_empty() {
+            state.export.pack_name = "DownloadLocal".to_string();
+        }
         encrypt::start_pack_export(state);
     }
 }
