@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 use regex::Regex;
 
-pub fn patch_identity(decode_dir: &Path, new_suffix: &str, log_cb: &impl Fn(String)) -> Result<String, String> {
+pub fn patch_identity(decode_dir: &Path, new_suffix: &str, app_title: &str, _log_cb: &impl Fn(String)) -> Result<String, String> {
     let suffix = new_suffix.trim();
     if suffix.is_empty() {
         return Ok("jp.co.ponos.battlecats".to_string());
@@ -14,8 +14,6 @@ pub fn patch_identity(decode_dir: &Path, new_suffix: &str, log_cb: &impl Fn(Stri
     if !manifest_path.exists() {
         return Err("Decoded AndroidManifest.xml not found. Apktool decode may have failed.".into());
     }
-
-    log_cb(format!("Applying global token patch for side-by-side install: +{}", suffix));
 
     let mut manifest_text = fs::read_to_string(&manifest_path).map_err(|e| e.to_string())?;
 
@@ -69,16 +67,22 @@ pub fn patch_identity(decode_dir: &Path, new_suffix: &str, log_cb: &impl Fn(Stri
     fs::write(&manifest_path, manifest_text).map_err(|e| e.to_string())?;
 
     if strings_path.exists() {
-        log_cb("Patching res/values/strings.xml to align internal package references...".to_string());
         let mut strings_text = fs::read_to_string(&strings_path).map_err(|e| e.to_string())?;
         strings_text = strings_text.replace(active_token, &new_token);
+
+        if !app_title.trim().is_empty() {
+            let app_name_re = Regex::new(r#"<string name="app_name">[^<]*</string>"#).unwrap();
+            let new_title_element = format!("<string name=\"app_name\">{}</string>", app_title.trim());
+            strings_text = app_name_re.replace_all(&strings_text, new_title_element.as_str()).to_string();
+        }
+
         fs::write(&strings_path, strings_text).map_err(|e| e.to_string())?;
     }
 
     Ok(final_package_id)
 }
 
-pub fn replace_icons(mod_dir: &Path, decode_dir: &Path, log_cb: &impl Fn(String)) -> Result<(), String> {
+pub fn replace_icons(mod_dir: &Path, decode_dir: &Path, _log_cb: &impl Fn(String)) -> Result<(), String> {
     let icons_dir = mod_dir.join("icons");
     let targets = [
         (icons_dir.join("icon.png"), "icon.png"),
@@ -87,7 +91,6 @@ pub fn replace_icons(mod_dir: &Path, decode_dir: &Path, log_cb: &impl Fn(String)
     ];
 
     if targets.iter().all(|(p, _)| !p.exists()) { return Ok(()); }
-    log_cb("Replacing standard app icons...".to_string());
 
     let res_dir = decode_dir.join("res");
     if !res_dir.exists() { return Ok(()); }
@@ -115,9 +118,9 @@ pub fn replace_icons(mod_dir: &Path, decode_dir: &Path, log_cb: &impl Fn(String)
     Ok(())
 }
 
-pub fn inject_loose_assets(mod_dir: &Path, decode_dir: &Path, log_cb: &impl Fn(String)) -> Result<(), String> {
+pub fn inject_loose_assets(mod_dir: &Path, decode_dir: &Path) -> Result<usize, String> {
     let loose_dir = mod_dir.join("loose");
-    if !loose_dir.exists() { return Ok(()); }
+    if !loose_dir.exists() { return Ok(0); }
 
     let assets_dir = decode_dir.join("assets");
     let _ = fs::create_dir_all(&assets_dir);
@@ -157,9 +160,5 @@ pub fn inject_loose_assets(mod_dir: &Path, decode_dir: &Path, log_cb: &impl Fn(S
         }
     }
 
-    if copied_count > 0 {
-        log_cb(format!("Injected {} modified loose asset(s).", copied_count));
-    }
-
-    Ok(())
+    Ok(copied_count)
 }

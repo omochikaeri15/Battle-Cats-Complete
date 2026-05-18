@@ -1,19 +1,81 @@
-use std::fs;
-use std::path::Path;
+use std::fs::{self, File};
+use std::io::{Write, BufWriter};
+use std::path::{Path, PathBuf};
+use std::sync::mpsc;
+use std::thread;
+
 use aes::Aes128;
 use cbc::Encryptor as CbcEncryptor;
 use ecb::Encryptor as EcbEncryptor;
 use block_padding::Pkcs7;
 use aes::cipher::{BlockEncryptMut, KeyIvInit, KeyInit};
+
+use crate::features::mods::logic::state::ModState;
+use crate::global::region::Region;
+use crate::features::data::utilities::keys;
+use crate::features::settings::logic::state::Settings;
 use crate::features::settings::logic::keys::RegionKey;
 use crate::features::data::utilities::crypto::get_md5_key;
+use crate::features::mods::export::patch::{EVENT_RECEIVER, ExportEvent, spawn_log_adapter};
 
-pub fn build_pack_and_list(
+pub fn start_pack_export(state: &mut ModState) {
+    if state.export.is_busy { return; }
+
+    let Some(mod_folder) = state.selected_mod.clone() else { return; };
+
+    state.export.log_content.clear();
+    state.export.is_busy = true;
+    state.export.status_message = "Initializing Pack Export...".to_string();
+
+    let pack_name = if state.export.pack_name.trim().is_empty() { "mod".to_string() } else { state.export.pack_name.clone() };
+    let target_region = state.export.target_region.clone();
+
+    let (tx, rx) = mpsc::channel();
+    if let Ok(mut guard) = EVENT_RECEIVER.lock() { *guard = Some(rx); }
+
+    thread::spawn(move || {
+        let str_tx = spawn_log_adapter(tx.clone());
+        let log_cb = |msg: String| { let _ = tx.send(ExportEvent::Log(msg)); };
+
+        let settings: Settings = crate::global::io::json::load("settings.json").unwrap_or_default();
+
+        let user_keys = match keys::verify(settings.game_data.enforce_key_validation, &str_tx) {
+            Ok(k) => k,
+            Err(e) => {
+                let _ = tx.send(ExportEvent::Error(e));
+                return;
+            }
+        };
+
+        let base_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("../../../.."));
+        let mod_path = base_dir.join("mods").join(&mod_folder);
+        let export_dir = base_dir.join("exports");
+
+        let patch_dir = mod_path.join("patch");
+        let _ = fs::create_dir_all(&export_dir);
+
+        let region_key = match target_region {
+            Region::En => &user_keys.en,
+            Region::Ja => &user_keys.ja,
+            Region::Ko => &user_keys.ko,
+            Region::Tw => &user_keys.tw,
+        };
+
+        if let Err(e) = stream_pack_and_list(&patch_dir, &export_dir, &pack_name, region_key, &log_cb) {
+            let _ = tx.send(ExportEvent::Error(e)); return;
+        }
+
+        let _ = tx.send(ExportEvent::Success(format!("Successfully Built {}.pack!", pack_name)));
+    });
+}
+
+pub fn stream_pack_and_list(
     source_dir: &Path,
+    dest_dir: &Path,
     pack_name: &str,
     region_key: &RegionKey,
     log_cb: &impl Fn(String)
-) -> Result<(Vec<u8>, Vec<u8>), String> {
+) -> Result<(), String> {
 
     let mut files_with_size = Vec::new();
 
@@ -28,26 +90,32 @@ pub fn build_pack_and_list(
         }
     }
 
-    if files_with_size.is_empty() {
-        return Err("No files found in the source directory.".to_string());
+    let total_files = files_with_size.len();
+    if total_files == 0 {
+        return Err("No files found in the patch directory.".to_string());
     }
-
-    let mut list_string = format!("{}\n", files_with_size.len());
-    let mut current_address = 0;
-    let mut pack_buffer = Vec::new();
 
     let is_imagedata = pack_name.to_lowercase().contains("imagedatalocal");
     let is_server = pack_name.to_lowercase().contains("server");
 
-    let total_files = files_with_size.len();
-    let log_interval = if total_files > 100 { 50 } else { 10 };
-    log_cb(format!("Found {} files to encrypt.", total_files));
+    log_cb(format!("Found {} files to patch.", total_files));
 
-    for (index, (file_path, _orig_size)) in files_with_size.iter().enumerate() {
+    let log_interval = (total_files / 10).max(1);
+
+    let pack_path = dest_dir.join(format!("{}.pack", pack_name));
+    let list_path = dest_dir.join(format!("{}.list", pack_name));
+
+    let pack_file = File::create(&pack_path).map_err(|e| format!("Failed to create pack stream file: {}", e))?;
+    let mut pack_writer = BufWriter::new(pack_file);
+
+    let mut list_string = format!("{}\n", total_files);
+    let mut current_address = 0;
+
+    for (index, (file_path, _)) in files_with_size.iter().enumerate() {
         let filename = file_path.file_name().unwrap_or_default().to_string_lossy().to_string();
 
-        if index % log_interval == 0 || index == total_files - 1 {
-            log_cb(format!("Processing {} ({}/{})", filename, index + 1, total_files));
+        if index > 0 && index % log_interval == 0 {
+            log_cb(format!("Packed {} files | Streaming: {}", index, filename));
         }
 
         let mut data = fs::read(&file_path).map_err(|e| format!("Failed to read {}: {}", filename, e))?;
@@ -70,17 +138,19 @@ pub fn build_pack_and_list(
             }
         }
 
+        pack_writer.write_all(&data).map_err(|e| format!("Failed to write to pack buffer: {}", e))?;
+
         let new_size = data.len();
         list_string.push_str(&format!("{},{},{}\n", filename, current_address, new_size));
-
-        pack_buffer.extend(data);
         current_address += new_size;
     }
 
-    log_cb("Encrypting list file...".to_string());
-    let list_bytes = encrypt_ecb(list_string.as_bytes(), &get_md5_key("pack"))?;
+    pack_writer.flush().map_err(|e| format!("Failed to flush pack stream to disk: {}", e))?;
 
-    Ok((pack_buffer, list_bytes))
+    let list_bytes = encrypt_ecb(list_string.as_bytes(), &get_md5_key("pack"))?;
+    fs::write(list_path, list_bytes).map_err(|e| format!("Failed to write list file: {}", e))?;
+
+    Ok(())
 }
 
 fn encrypt_cbc(data: &[u8], key: &[u8; 16], iv: &[u8; 16]) -> Result<Vec<u8>, String> {

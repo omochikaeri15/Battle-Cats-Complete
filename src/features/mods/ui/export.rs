@@ -4,13 +4,12 @@ use crate::global::region::Region;
 use crate::features::settings::logic::Settings;
 use crate::features::mods::logic::metadata;
 use crate::features::addons::toolpaths::{self, Presence};
-use crate::features::mods::export::encrypt;
+use crate::features::mods::export::{patch, create, update, pack};
 
 pub fn show(ctx: &egui::Context, state: &mut ModState, _settings: &Settings) {
     let mut is_open = state.export.is_open;
     let window_id = egui::Id::new("export_mod_window");
-
-    let is_busy = encrypt::process_events(state);
+    let is_busy = patch::process_events(state);
     if is_busy {
         ctx.request_repaint();
     }
@@ -236,7 +235,11 @@ fn show_apk_view(ui: &mut egui::Ui, state: &mut ModState) {
     let can_apply = !state.export.is_busy && is_ready && !(state.export.patch_mode == PatchMode::Create && !apktool_present);
 
     if ui.add_enabled(can_apply, egui::Button::new("Apply Mod")).clicked() {
-        encrypt::start_apk_export(state);
+        if state.export.patch_mode == PatchMode::Create {
+            create::start_apk_export(state);
+        } else {
+            update::start_fast_track_export(state);
+        }
     }
 }
 
@@ -273,6 +276,6 @@ fn show_pack_view(ui: &mut egui::Ui, state: &mut ModState) {
         if state.export.pack_name.is_empty() {
             state.export.pack_name = "DownloadLocal".to_string();
         }
-        encrypt::start_pack_export(state);
+        pack::start_pack_export(state);
     }
 }
