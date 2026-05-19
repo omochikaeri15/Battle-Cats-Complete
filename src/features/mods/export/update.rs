@@ -10,7 +10,6 @@ use crate::features::mods::logic::state::ModState;
 use crate::global::region::Region;
 use crate::features::data::utilities::keys;
 use crate::features::settings::logic::state::Settings;
-use crate::features::addons::apktool::xapk;
 use crate::features::mods::export::pack;
 use crate::features::mods::export::sign;
 use crate::features::mods::export::patch::{EVENT_RECEIVER, ExportEvent, spawn_log_adapter};
@@ -71,22 +70,6 @@ pub fn start_fast_track_export(state: &mut ModState) {
         let temp_assets_dir = app_dir.join("assets");
         let _ = fs::create_dir_all(&temp_assets_dir);
 
-        let is_xapk = input_apk_path.extension().and_then(|extension| extension.to_str()) == Some("xapk");
-        let mut working_apk = input_apk_path.clone();
-
-        if is_xapk {
-            log_callback("Merging XAPK into APK...".to_string());
-            let xapk_dir = app_dir.join("xapk");
-            let _ = fs::create_dir_all(&xapk_dir);
-
-            let merged_temp_path = xapk_dir.join("merged_xapk.apk");
-            if let Err(error) = xapk::merge_xapk(&working_apk, &merged_temp_path, &log_callback) {
-                let _ = transmitter.send(ExportEvent::Error(error));
-                return;
-            }
-            working_apk = merged_temp_path;
-        }
-
         let region_key = match target_region {
             Region::En => &user_keys.en,
             Region::Ja => &user_keys.ja,
@@ -124,7 +107,7 @@ pub fn start_fast_track_export(state: &mut ModState) {
         let icon_foreground = icons_dir.join("icon_foreground.png");
         let push_icon = icons_dir.join("push_icon.png");
 
-        let source_file = match File::open(&working_apk) {
+        let source_file = match File::open(&input_apk_path) {
             Ok(file) => file,
             Err(error) => {
                 let _ = transmitter.send(ExportEvent::Error(format!("Failed to open source APK: {}", error)));
@@ -161,7 +144,14 @@ pub fn start_fast_track_export(state: &mut ModState) {
         let mut injected_count = 0;
 
         for index in 0..archive.len() {
-            let mut archive_file = archive.by_index(index).unwrap();
+            let archive_result = archive.by_index(index);
+
+            if let Err(error) = archive_result {
+                let _ = transmitter.send(ExportEvent::Error(format!("Failed to access internal APK file at index {}: {}", index, error)));
+                return;
+            }
+
+            let mut archive_file = archive_result.unwrap();
             let file_name = archive_file.name().to_string();
 
             if file_name.starts_with("META-INF/") { continue; }
@@ -257,7 +247,9 @@ pub fn start_fast_track_export(state: &mut ModState) {
         }
 
         let is_in_exports = input_apk_path.parent().map_or(false, |parent| {
-            parent.canonicalize().unwrap_or_default() == export_dir.canonicalize().unwrap_or_default()
+            let parent_canon = parent.canonicalize().unwrap_or_else(|_| parent.to_path_buf());
+            let export_canon = export_dir.canonicalize().unwrap_or_else(|_| export_dir.clone());
+            parent_canon == export_canon
         });
 
         let final_name = if !settings.mods.replace_on_update && is_in_exports {

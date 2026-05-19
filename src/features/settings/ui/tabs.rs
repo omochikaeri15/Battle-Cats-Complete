@@ -4,6 +4,7 @@ use crate::global::ui::shared::DragGuard;
 
 pub fn show(context: &egui::Context, settings: &mut Settings, drag_guard: &mut DragGuard) -> bool {
     let mut refresh_needed = false;
+    let mut save_needed = false;
     let tabs = ["General", "Cats", "Enemies", "Mods", "Data", "Animation", "Add-Ons", "About"];
 
     egui::CentralPanel::default().show(context, |ui_container| {
@@ -29,6 +30,7 @@ pub fn show(context: &egui::Context, settings: &mut Settings, drag_guard: &mut D
                 if ui_row.add(tab_button).clicked() {
                     settings.runtime.active_tab = tab_name.to_string();
                     settings.runtime.show_ip_field = false;
+                    save_needed = true;
                 }
             }
         });
@@ -59,11 +61,17 @@ pub fn show(context: &egui::Context, settings: &mut Settings, drag_guard: &mut D
                     }
                 };
 
-                if action_result { refresh_needed = true; }
-                let _ = crate::global::io::json::save("settings.json", &*settings);
+                if action_result {
+                    refresh_needed = true;
+                    save_needed = true;
+                }
             });
         });
     });
+
+    if save_needed {
+        let _ = crate::global::io::json::save("settings.json", &*settings);
+    }
 
     refresh_needed
 }

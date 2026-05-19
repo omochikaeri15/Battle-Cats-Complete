@@ -121,7 +121,7 @@ pub fn start_apk_export(state: &mut ModState) {
 
         log_callback("Normalizing binaries...".to_string());
         let normalized_apk_path = app_dir.join("normalized_final.apk");
-        if let Err(error) = modify::normalize_apk(&unsigned_apk_path, &normalized_apk_path) {
+        if let Err(error) = modify::normalize_apk(&unsigned_apk_path, &normalized_apk_path, &input_apk_path) {
             let _ = transmitter.send(ExportEvent::Error(format!("Normalization Error: {}", error)));
             return;
         }

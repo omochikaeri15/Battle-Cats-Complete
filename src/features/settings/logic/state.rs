@@ -25,7 +25,7 @@ pub struct ModsSettings {
 impl Default for ModsSettings {
     fn default() -> Self {
         Self {
-            replace_on_update: true,
+            replace_on_update: false,
         }
     }
 }

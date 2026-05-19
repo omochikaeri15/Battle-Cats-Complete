@@ -3,9 +3,8 @@ use std::path::Path;
 use regex::Regex;
 use zip::{ZipArchive, ZipWriter};
 use rayon::prelude::*;
-
-#[cfg(target_os = "windows")]
-use std::io::{Read, Write};
+use std::io::{Read, Write, Cursor};
+use std::collections::HashSet;
 
 pub fn patch_identity(decode_dir: &Path, new_suffix: &str, app_title: &str, _log_callback: &impl Fn(String)) -> Result<String, String> {
     let suffix = new_suffix.trim();
@@ -64,8 +63,9 @@ pub fn patch_identity(decode_dir: &Path, new_suffix: &str, app_title: &str, _log
     manifest_text = feature_split_regex.replace_all(&manifest_text, "").to_string();
 
     if let Some(start_index) = manifest_text.find("<split") {
-        if let Some(end_index) = manifest_text[start_index..].find("/>") {
-            manifest_text.replace_range(start_index..start_index + end_index + 2, "");
+        let end_offset = manifest_text[start_index..].find("/>").unwrap_or(0);
+        if end_offset > 0 {
+            manifest_text.replace_range(start_index..start_index + end_offset + 2, "");
         }
     }
 
@@ -114,9 +114,9 @@ pub fn replace_icons(mod_dir: &Path, decode_dir: &Path, _log_callback: &impl Fn(
             if !source_path.exists() { continue; }
 
             let destination_path = target_dir.join(target_name);
-            if destination_path.exists() {
-                let _ = fs::copy(source_path, &destination_path);
-            }
+            if !destination_path.exists() { continue; }
+
+            let _ = fs::copy(source_path, &destination_path);
         }
     }
 
@@ -142,19 +142,16 @@ pub fn inject_loose_assets(mod_dir: &Path, decode_dir: &Path) -> Result<usize, S
         let filename = source_path.file_name().unwrap_or_default();
         let destination_path = assets_dir.join(filename);
 
-        if destination_path.exists() {
-            let source_meta = fs::metadata(&source_path).ok();
-            let destination_meta = fs::metadata(&destination_path).ok();
+        let source_meta = fs::metadata(&source_path).ok();
+        let destination_meta = fs::metadata(&destination_path).ok();
+        let same_size = source_meta.map(|m| m.len()) == destination_meta.map(|m| m.len());
 
-            if let (Some(src_metadata), Some(dest_metadata)) = (source_meta, destination_meta) {
-                if src_metadata.len() == dest_metadata.len() {
-                    let source_data = fs::read(&source_path).unwrap_or_default();
-                    let destination_data = fs::read(&destination_path).unwrap_or_default();
+        if destination_path.exists() && same_size {
+            let source_data = fs::read(&source_path).unwrap_or_default();
+            let destination_data = fs::read(&destination_path).unwrap_or_default();
 
-                    if source_data == destination_data {
-                        return 0;
-                    }
-                }
+            if source_data == destination_data {
+                return 0;
             }
         }
 
@@ -168,7 +165,37 @@ pub fn inject_loose_assets(mod_dir: &Path, decode_dir: &Path) -> Result<usize, S
     Ok(copied_count)
 }
 
-pub fn normalize_apk(input_apk: &Path, output_apk: &Path) -> Result<(), String> {
+pub fn normalize_apk(input_apk: &Path, output_apk: &Path, original_apk: &Path) -> Result<(), String> {
+    let mut stored_files_map = HashSet::new();
+
+    let original_file = fs::File::open(original_apk).map_err(|error| format!("Failed to open original APK: {}", error))?;
+    let mut original_archive = ZipArchive::new(original_file).map_err(|error| format!("Failed to read original APK: {}", error))?;
+
+    for index in 0..original_archive.len() {
+        let mut archive_file = original_archive.by_index(index).map_err(|error| error.to_string())?;
+        let file_name = archive_file.name().to_string();
+
+        if !file_name.ends_with(".apk") {
+            if archive_file.compression() == zip::CompressionMethod::Stored {
+                stored_files_map.insert(file_name);
+            }
+            continue;
+        }
+
+        let mut apk_data = Vec::new();
+        archive_file.read_to_end(&mut apk_data).map_err(|error| error.to_string())?;
+
+        let cursor = Cursor::new(apk_data);
+        let mut nested_archive = ZipArchive::new(cursor).map_err(|error| error.to_string())?;
+
+        for nested_index in 0..nested_archive.len() {
+            let nested_file = nested_archive.by_index(nested_index).map_err(|error| error.to_string())?;
+            if nested_file.compression() == zip::CompressionMethod::Stored {
+                stored_files_map.insert(nested_file.name().to_string());
+            }
+        }
+    }
+
     let source_file = fs::File::open(input_apk).map_err(|error| format!("Failed to open APK: {}", error))?;
     let mut archive = ZipArchive::new(source_file).map_err(|error| format!("Failed to read APK archive: {}", error))?;
 
@@ -178,37 +205,29 @@ pub fn normalize_apk(input_apk: &Path, output_apk: &Path) -> Result<(), String> 
     let uncompressed_extensions = ["dex", "arsc", "so", "pack", "list", "ogg"];
 
     for index in 0..archive.len() {
-        let archive_file = archive.by_index(index).unwrap();
+        let mut archive_file = archive.by_index(index).unwrap();
         let file_name = archive_file.name().to_string();
         let file_extension = Path::new(&file_name).extension().and_then(|ext| ext.to_str()).unwrap_or("");
 
         let force_store = uncompressed_extensions.contains(&file_extension);
-        let is_already_stored = archive_file.compression() == zip::CompressionMethod::Stored;
+        let is_already_stored = stored_files_map.contains(&file_name);
 
         if !force_store && !is_already_stored {
             zip_writer.raw_copy_file(archive_file).map_err(|error| error.to_string())?;
             continue;
         }
 
-        #[cfg(target_os = "windows")]
-        {
-            let mut archive_file = archive_file;
-            let mut file_data = Vec::new();
-            archive_file.read_to_end(&mut file_data).map_err(|error| format!("Failed reading {}: {}", file_name, error))?;
+        let mut file_data = Vec::new();
+        archive_file.read_to_end(&mut file_data).map_err(|error| format!("Failed reading {}: {}", file_name, error))?;
 
-            let byte_alignment = if file_extension == "so" { 4096 } else { 4 };
+        let byte_alignment = if file_extension == "so" { 4096 } else { 4 };
 
-            let write_options = zip::write::SimpleFileOptions::default()
-                .compression_method(zip::CompressionMethod::Stored)
-                .with_alignment(byte_alignment);
+        let write_options = zip::write::SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Stored)
+            .with_alignment(byte_alignment);
 
-            zip_writer.start_file(&file_name, write_options).map_err(|error| error.to_string())?;
-            zip_writer.write_all(&file_data).map_err(|error| error.to_string())?;
-        }
-        #[cfg(not(target_os = "windows"))]
-        {
-            zip_writer.raw_copy_file(archive_file).map_err(|error| error.to_string())?;
-        }
+        zip_writer.start_file(&file_name, write_options).map_err(|error| error.to_string())?;
+        zip_writer.write_all(&file_data).map_err(|error| error.to_string())?;
     }
 
     zip_writer.finish().map_err(|error| error.to_string())?;
