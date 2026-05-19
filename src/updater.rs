@@ -43,10 +43,17 @@ fn restart_app() {
     std::process::exit(0);
 }
 
-#[cfg(not(unix))]
+#[cfg(windows)]
 fn restart_app() {
+    use std::os::windows::process::CommandExt;
     let Ok(exe) = std::env::current_exe() else { return; };
-    let _ = Command::new(exe).spawn();
+    let exe_path = exe.to_string_lossy();
+    let _ = Command::new("cmd")
+        .arg("/C")
+        .arg(format!("timeout /t 1 /nobreak > NUL && start \"\" \"{}\"", exe_path))
+        .creation_flags(0x08000000)
+        .spawn();
+
     std::process::exit(0);
 }
 

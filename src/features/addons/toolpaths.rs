@@ -57,7 +57,7 @@ pub fn adb_status() -> Presence {
 }
 
 pub fn avifenc_status() -> Presence {
-    if get_tools_dir().join("avifenc").join(ADB_BIN).exists() { Presence::Installed } else { Presence::Missing }
+    if get_tools_dir().join("avifenc").join(AVIF_BIN).exists() { Presence::Installed } else { Presence::Missing }
 }
 
 pub fn ffmpeg_status() -> Presence {

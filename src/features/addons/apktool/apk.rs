@@ -1,11 +1,31 @@
 use std::process::Command;
 use std::path::Path;
 use std::fs;
+use std::env;
 use crate::features::addons::apktool::download::{get_jar_path, get_apktool_dir, get_java_path};
 
-fn execute_command(binary_path: &Path, arguments: &[String]) -> Result<(), String> {
-    let output = Command::new(binary_path)
-        .args(arguments)
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
+fn execute_command(
+    binary_path: &Path,
+    arguments: &[String],
+    env_vars: Option<(&str, String)>
+) -> Result<(), String> {
+    let mut command = Command::new(binary_path);
+    command.args(arguments);
+
+    if let Some((key, value)) = env_vars {
+        command.env(key, value);
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    let output = command
         .output()
         .map_err(|error| format!("Failed to start process: {}", error))?;
 
@@ -24,14 +44,19 @@ fn run_java_with_fallback(arguments: &[String], log_callback: &impl Fn(String)) 
     let local_java_path = get_java_path();
 
     if let Some(java_binary) = local_java_path {
-        if execute_command(&java_binary, arguments).is_ok() {
+        let java_bin_dir = java_binary.parent().unwrap_or(Path::new(""));
+        let current_path = env::var("PATH").unwrap_or_default();
+        let separator = if cfg!(target_os = "windows") { ";" } else { ":" };
+        let new_path = format!("{}{}{}", java_bin_dir.display(), separator, current_path);
+
+        if execute_command(&java_binary, arguments, Some(("PATH", new_path))).is_ok() {
             return Ok(());
         }
         log_callback("JRE crashed or incompatible\nFalling back to system JRE...".to_string());
     }
 
     let system_java = Path::new("java");
-    if let Err(system_error) = execute_command(system_java, arguments) {
+    if let Err(system_error) = execute_command(system_java, arguments, None) {
         return Err(format!("System Java execution also failed.\nError: {}", system_error));
     }
 
