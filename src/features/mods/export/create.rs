@@ -87,6 +87,12 @@ pub fn start_apk_export(state: &mut ModState) {
         let final_id = final_id_result.unwrap_or_else(|_| "jp.co.ponos.battlecats".to_string());
 
         log_callback("Replacing icons...".to_string());
+        let res_dir = apk_dir.join("res");
+        let density_folders = ["drawable-xxxhdpi", "drawable-xxhdpi", "drawable-xhdpi"];
+        for folder_name in density_folders {
+            let _ = fs::create_dir_all(res_dir.join(folder_name));
+        }
+        
         let _ = modify::replace_icons(&mod_dir, &apk_dir, &log_callback);
 
         let region_key = match detected_region {

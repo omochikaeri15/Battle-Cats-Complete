@@ -5,6 +5,14 @@ use zip::{ZipArchive, ZipWriter};
 use rayon::prelude::*;
 use std::io::{Read, Write, Cursor};
 use std::collections::HashSet;
+use image::imageops::FilterType;
+
+struct IconBlueprint<'a> {
+    file_name: &'a str,
+    size_xxxhdpi: u32,
+    size_xxhdpi: u32,
+    size_xhdpi: u32,
+}
 
 pub fn patch_identity(decode_dir: &Path, new_suffix: &str, app_title: &str, _log_callback: &impl Fn(String)) -> Result<String, String> {
     let suffix = new_suffix.trim();
@@ -87,37 +95,67 @@ pub fn patch_identity(decode_dir: &Path, new_suffix: &str, app_title: &str, _log
     Ok(final_package_id)
 }
 
+fn process_single_icon(
+    source_path: &Path,
+    res_dir: &Path,
+    blueprint: &IconBlueprint,
+) -> Result<(), String> {
+    let source_image = image::open(source_path)
+        .map_err(|error| format!("Failed to load {}: {}", blueprint.file_name, error))?;
+
+    let source_width = source_image.width();
+
+    let target_resolutions = vec![
+        ("drawable-xxxhdpi", blueprint.size_xxxhdpi),
+        ("drawable-xxhdpi", blueprint.size_xxhdpi),
+        ("drawable-xhdpi", blueprint.size_xhdpi),
+    ];
+
+    for (folder_name, target_size) in target_resolutions {
+        let target_dir = res_dir.join(folder_name);
+
+        if !target_dir.exists() {
+            continue;
+        }
+
+        let destination_path = target_dir.join(blueprint.file_name);
+
+        if source_width <= target_size {
+            let _ = fs::copy(source_path, &destination_path);
+            continue;
+        }
+
+        let scaled_image = source_image.resize_exact(target_size, target_size, FilterType::Lanczos3);
+        let _ = scaled_image.save(&destination_path);
+    }
+
+    Ok(())
+}
+
 pub fn replace_icons(mod_dir: &Path, decode_dir: &Path, _log_callback: &impl Fn(String)) -> Result<(), String> {
     let icons_dir = mod_dir.join("icons");
-    let targets = [
-        (icons_dir.join("icon.png"), "icon.png"),
-        (icons_dir.join("icon_foreground.png"), "icon_foreground.png"),
-        (icons_dir.join("push_icon.png"), "push_icon.png"),
-    ];
-
-    if targets.iter().all(|(path, _)| !path.exists()) { return Ok(()); }
+    if !icons_dir.exists() {
+        return Ok(());
+    }
 
     let res_dir = decode_dir.join("res");
-    if !res_dir.exists() { return Ok(()); }
+    if !res_dir.exists() {
+        return Ok(());
+    }
 
-    let target_dirs = [
-        "drawable-xhdpi",
-        "drawable-xxhdpi",
-        "drawable-xxxhdpi"
+    let icon_blueprints = vec![
+        IconBlueprint { file_name: "icon.png", size_xxxhdpi: 192, size_xxhdpi: 144, size_xhdpi: 96 },
+        IconBlueprint { file_name: "icon_foreground.png", size_xxxhdpi: 432, size_xxhdpi: 324, size_xhdpi: 216 },
+        IconBlueprint { file_name: "push_icon.png", size_xxxhdpi: 96, size_xxhdpi: 72, size_xhdpi: 48 },
     ];
 
-    for dir_name in target_dirs {
-        let target_dir = res_dir.join(dir_name);
-        if !target_dir.exists() { continue; }
-
-        for (source_path, target_name) in &targets {
-            if !source_path.exists() { continue; }
-
-            let destination_path = target_dir.join(target_name);
-            if !destination_path.exists() { continue; }
-
-            let _ = fs::copy(source_path, &destination_path);
+    for blueprint in icon_blueprints {
+        let source_path = icons_dir.join(blueprint.file_name);
+        if !source_path.exists() {
+            continue;
         }
+
+        let _ = process_single_icon(&source_path, &res_dir, &blueprint);
     }
 
     Ok(())
@@ -144,7 +182,8 @@ pub fn inject_loose_assets(mod_dir: &Path, decode_dir: &Path) -> Result<usize, S
 
         let source_meta = fs::metadata(&source_path).ok();
         let destination_meta = fs::metadata(&destination_path).ok();
-        let same_size = source_meta.map(|m| m.len()) == destination_meta.map(|m| m.len());
+
+        let same_size = source_meta.map(|meta_data| meta_data.len()) == destination_meta.map(|meta_data| meta_data.len());
 
         if destination_path.exists() && same_size {
             let source_data = fs::read(&source_path).unwrap_or_default();
@@ -207,7 +246,7 @@ pub fn normalize_apk(input_apk: &Path, output_apk: &Path, original_apk: &Path) -
     for index in 0..archive.len() {
         let mut archive_file = archive.by_index(index).unwrap();
         let file_name = archive_file.name().to_string();
-        let file_extension = Path::new(&file_name).extension().and_then(|ext| ext.to_str()).unwrap_or("");
+        let file_extension = Path::new(&file_name).extension().and_then(|extension_str| extension_str.to_str()).unwrap_or("");
 
         let force_store = uncompressed_extensions.contains(&file_extension);
         let is_already_stored = stored_files_map.contains(&file_name);
