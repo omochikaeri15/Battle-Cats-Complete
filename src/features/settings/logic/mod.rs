@@ -5,5 +5,6 @@ pub mod delete;
 pub mod exceptions;
 pub mod keys;
 pub mod pem;
+pub mod desktop;
 
 pub use state::*;
