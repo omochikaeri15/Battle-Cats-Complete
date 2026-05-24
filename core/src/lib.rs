@@ -1,0 +1,10 @@
+pub mod addons;
+pub mod animation;
+pub mod cat;
+pub mod data;
+pub mod enemy;
+pub mod global;
+pub mod mods;
+pub mod settings;
+pub mod stage;
+pub mod assets;

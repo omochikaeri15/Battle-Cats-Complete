@@ -1,0 +1,1 @@
+pub const LICENSES: &str = include_str!("licenses.txt");

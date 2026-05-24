@@ -1,63 +1,9 @@
-[package]
-name = "Battle_Cats_Complete"
-version = "0.14.4"
-edition = "2024"
-
-[features]
-default = []
-
-[dependencies]
-eframe = { version = "0.29", features = ["persistence", "glow"] }
-image = { version = "0.25", features = ["png", "ico"] }
-rfd = "0.15"
-zip = "2"
-tar = "0.4"
-zstd = { version = "0.13", features = ["zstdmt"] }
-regex = "1"
-rayon = "1.10"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-notify = "8.2.0"
-self_update = { version = "0.41", features = ["archive-zip", "compression-zip-deflate"] }
-bytemuck = { version = "1", features = ["derive"] }
-glow = "0.13"
-aes = "0.8"
-cbc = "0.1"
-ecb = "0.1"
-block-padding = "0.3"
-md5 = "0.7"
-hex = "0.4"
-reqwest = { version = "0.12", features = ["blocking", "rustls-tls"] }
-webp-animation = "0.9.0"
-gif = "0.13"
-directories = "5.0"
-open = "5.1"
-imageproc = "0.25.0"
-ab_glyph = "0.2"
-arboard = "3.4.0"
-indexmap = { version = "2", features = ["serde"] }
-bincode = "1.3"
-rustc-hash = "1.1"
-anyhow = "1.0"
-byteorder = "1.5"
-sha2 = "0.10"
-rsa = { version = "0.9", features = ["sha2", "pem"] }
-base64 = "0.22"
-rasn-pkix = "0.28.13"
-rasn = "0.28.13"
-
-[target.'cfg(windows)'.build-dependencies]
-winres = "0.1"
-
 [workspace]
+resolver = "2"
+default-run = "gui"
 members = [
-    ".",
+    "core",
+    "gui",
+    #"cli",
     "xtask",
 ]
-
-[profile.release]
-strip = true
-opt-level = 3
-lto = true
-codegen-units = 1
-panic = "abort"
