@@ -36,3 +36,4 @@ rsa = { version = "0.9", features = ["sha2", "pem"] }
 base64 = "0.22"
 rasn-pkix = "0.28.13"
 rasn = "0.28.13"
+open = "5.3.5"

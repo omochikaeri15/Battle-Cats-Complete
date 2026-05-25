@@ -1033,6 +1033,7 @@ dependencies = [
  "indexmap",
  "md5",
  "notify",
+ "open",
  "rasn",
  "rasn-pkix",
  "rayon",
