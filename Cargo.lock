@@ -2100,7 +2100,7 @@ dependencies = [
 
 [[package]]
 name = "gui"
-version = "0.14.4"
+version = "0.14.5"
 dependencies = [
  "ab_glyph",
  "arboard",
