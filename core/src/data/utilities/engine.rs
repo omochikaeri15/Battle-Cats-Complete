@@ -7,10 +7,14 @@ use std::io::{Read, Seek, SeekFrom};
 use std::sync::Arc;
 use rayon::prelude::*;
 
-use crate::data::utilities::{apk, crypto, audit, manifest, router, rules, chrono};
+use crate::data::utilities::{apk, audit, manifest, router, rules};
 use crate::global::io::patterns;
 use crate::settings::logic::exceptions::RuleHandling;
 use crate::settings::logic::keys::UserKeys;
+
+// Import nyanko pure domains
+use nyanko::pack::{chronology, cryptology};
+use nyanko::pack::cryptology::Region as NyankoRegion;
 
 #[derive(Clone)]
 struct UniversalTask {
@@ -48,6 +52,20 @@ fn cleanup_temporary_directories(directories: &[PathBuf]) {
     for directory in directories { let _ = fs::remove_dir_all(directory); }
 }
 
+fn map_keys_to_nyanko(user_keys: &UserKeys) -> cryptology::PackKeys {
+    let tuples = user_keys.as_tuples().into_iter().map(|(k, iv, r)| {
+        let nyanko_region = match r {
+            crate::global::region::Region::En => NyankoRegion::En,
+            crate::global::region::Region::Ja => NyankoRegion::Jp,
+            crate::global::region::Region::Ko => NyankoRegion::Kr,
+            crate::global::region::Region::Tw => NyankoRegion::Tw,
+        };
+        (k.to_string(), iv.to_string(), nyanko_region)
+    }).collect();
+
+    cryptology::PackKeys { tuples }
+}
+
 pub fn run_universal_import(
     source_directories: &[PathBuf],
     status_sender: &Sender<String>,
@@ -58,6 +76,7 @@ pub fn run_universal_import(
 
     let user_keys = UserKeys::load();
     if user_keys.is_empty() { return Err("Missing Decryption Keys".into()); }
+    let nyanko_keys = map_keys_to_nyanko(&user_keys);
 
     let game_root_path = Path::new("game");
     let meta_directory_path = game_root_path.join("meta");
@@ -109,14 +128,17 @@ pub fn run_universal_import(
             let _ = status_sender.send("Extracting update data...".to_string());
             has_notified_extraction = true;
         }
-        
+
         let (mut new_list_paths, mut new_temp_dirs, mut new_loose_paths) = apk::extract_all(&discovered_apk_files);
 
         discovered_list_files.append(&mut new_list_paths);
         global_temporary_directories.append(&mut new_temp_dirs);
         discovered_loose_files.append(&mut new_loose_paths);
 
-        let calculated_chrono_score = chrono::calculate(source_directory, &global_temporary_directories);
+        let is_update_pack = global_temporary_directories.iter().any(|dir| source_directory.starts_with(dir));
+        let folder_name_stem = source_directory.file_name().unwrap_or_default().to_string_lossy();
+
+        let calculated_chrono_score = chronology::calculate_weight(&folder_name_stem, is_update_pack);
 
         for loose_path in discovered_loose_files {
             let filename = loose_path.file_name().unwrap_or_default().to_string_lossy().into_owned();
@@ -183,17 +205,7 @@ pub fn run_universal_import(
 
             let Ok(list_file_data) = fs::read(&item_path) else { continue; };
 
-            let decrypted_list_content = {
-                let pack_key = crypto::get_md5_key("pack");
-                if let Ok(bytes) = crypto::decrypt_ecb_with_key(&list_file_data, &pack_key) { String::from_utf8(bytes).ok() }
-                else {
-                    let battlecats_key = crypto::get_md5_key("battlecats");
-                    if let Ok(bytes) = crypto::decrypt_ecb_with_key(&list_file_data, &battlecats_key) { String::from_utf8(bytes).ok() }
-                    else { None }
-                }
-            };
-
-            let Some(decoded_string_content) = decrypted_list_content else { continue; };
+            let Some(decoded_string_content) = cryptology::decrypt_list(&list_file_data).ok() else { continue; };
 
             for text_line in decoded_string_content.lines() {
                 let parts: Vec<&str> = text_line.split(',').collect();
@@ -356,7 +368,7 @@ pub fn run_universal_import(
             if input_pack_file.seek(SeekFrom::Start(processing_task.byte_offset)).is_err() { continue; }
             if input_pack_file.read_exact(&mut encrypted_byte_buffer).is_err() { continue; }
 
-            match crypto::decrypt_pack_chunk(&encrypted_byte_buffer, &processing_task.original_name, &user_keys) {
+            match cryptology::decrypt_pack_chunk(&encrypted_byte_buffer, &processing_task.original_name, &nyanko_keys) {
                 Ok((decrypted_byte_vector, _)) => {
                     let strict_size_limit = std::cmp::min(processing_task.byte_size, decrypted_byte_vector.len());
                     let exact_data_slice = &decrypted_byte_vector[..strict_size_limit];

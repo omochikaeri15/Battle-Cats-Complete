@@ -3,9 +3,10 @@ name = "core"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
+license-file.workspace = true
 
 [dependencies]
-#nyanko = { path = "../lib" }
+nyanko = { path = "../lib" }
 image = { version = "0.25", features = ["png", "ico"] }
 zip = "2"
 tar = "0.4"

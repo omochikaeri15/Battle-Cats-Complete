@@ -1,6 +1,5 @@
 [workspace]
 resolver = "2"
-default-run = "gui"
 members = [
     "core",
     "gui",
@@ -13,6 +12,7 @@ members = [
 version = "0.14.7"
 authors = ["omochikaeri15 <251449262+omochikaeri15@users.noreply.github.com>"]
 edition = "2024"
+license-file = "LICENSE"
 
 
 [profile.release]

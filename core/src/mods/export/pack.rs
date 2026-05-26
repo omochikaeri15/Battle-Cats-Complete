@@ -4,18 +4,13 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::thread;
 
-use aes::Aes128;
-use cbc::Encryptor as CbcEncryptor;
-use ecb::Encryptor as EcbEncryptor;
-use block_padding::Pkcs7;
-use aes::cipher::{BlockEncryptMut, KeyIvInit, KeyInit};
+use nyanko::pack::cryptology;
 
 use crate::mods::logic::state::ModDataState;
 use crate::global::region::Region;
 use crate::data::utilities::keys;
 use crate::settings::logic::state::Settings;
 use crate::settings::logic::keys::RegionKey;
-use crate::data::utilities::crypto::get_md5_key;
 use crate::mods::export::patch::{EVENT_RECEIVER, ExportEvent, spawn_log_adapter};
 
 pub fn start_pack_export(state: &mut ModDataState) {
@@ -27,7 +22,12 @@ pub fn start_pack_export(state: &mut ModDataState) {
     state.export.is_busy = true;
     state.export.status_message = "Initializing Pack Export...".to_string();
 
-    let pack_name = if state.export.pack_name.trim().is_empty() { "mod".to_string() } else { state.export.pack_name.clone() };
+    // Changed fallback from "mod" to "DownloadLocal" for safety
+    let pack_name = if state.export.pack_name.trim().is_empty() {
+        "DownloadLocal".to_string()
+    } else {
+        state.export.pack_name.clone()
+    };
     let target_region = state.export.target_region.clone();
 
     let (transmitter, receiver) = mpsc::channel();
@@ -122,7 +122,7 @@ pub fn stream_pack_and_list(
 
         if !is_imagedata {
             if is_server {
-                file_data = encrypt_ecb(file_data, &get_md5_key("battlecats"))?;
+                file_data = cryptology::encrypt_server_data(&file_data)?;
             } else {
                 let key_bytes = hex::decode(&region_key.key).map_err(|_| "Invalid Region Key Hex".to_string())?;
                 let iv_bytes = hex::decode(&region_key.iv).map_err(|_| "Invalid Region IV Hex".to_string())?;
@@ -134,7 +134,7 @@ pub fn stream_pack_and_list(
                 let key_array: [u8; 16] = key_bytes.try_into().unwrap_or([0; 16]);
                 let iv_array: [u8; 16] = iv_bytes.try_into().unwrap_or([0; 16]);
 
-                file_data = encrypt_cbc(file_data, &key_array, &iv_array)?;
+                file_data = cryptology::encrypt_game_data(&file_data, &key_array, &iv_array)?;
             }
         }
 
@@ -147,36 +147,8 @@ pub fn stream_pack_and_list(
 
     pack_writer.flush().map_err(|error| format!("Failed to flush pack stream to disk: {}", error))?;
 
-    let list_bytes = encrypt_ecb(list_string.into_bytes(), &get_md5_key("pack"))?;
+    let list_bytes = cryptology::encrypt_list(&list_string)?;
     fs::write(list_path, list_bytes).map_err(|error| format!("Failed to write list file: {}", error))?;
 
     Ok(())
-}
-
-fn encrypt_cbc(mut buffer: Vec<u8>, key: &[u8; 16], iv: &[u8; 16]) -> Result<Vec<u8>, String> {
-    let encryptor = CbcEncryptor::<Aes128>::new(key.into(), iv.into());
-    let current_position = buffer.len();
-    buffer.resize(current_position + 16, 0);
-
-    let encrypted_length = encryptor
-        .encrypt_padded_mut::<Pkcs7>(&mut buffer, current_position)
-        .map_err(|_| "CBC Encryption Error".to_string())?
-        .len();
-
-    buffer.truncate(encrypted_length);
-    Ok(buffer)
-}
-
-fn encrypt_ecb(mut buffer: Vec<u8>, key: &[u8; 16]) -> Result<Vec<u8>, String> {
-    let encryptor = EcbEncryptor::<Aes128>::new(key.into());
-    let current_position = buffer.len();
-    buffer.resize(current_position + 16, 0);
-
-    let encrypted_length = encryptor
-        .encrypt_padded_mut::<Pkcs7>(&mut buffer, current_position)
-        .map_err(|_| "ECB Encryption Error".to_string())?
-        .len();
-
-    buffer.truncate(encrypted_length);
-    Ok(buffer)
 }

@@ -3,7 +3,9 @@ use std::path::Path;
 use std::sync::mpsc::Sender;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use rayon::prelude::*;
-use crate::data::utilities::crypto;
+
+use nyanko::pack::cryptology;
+use nyanko::pack::cryptology::Region as NyankoRegion;
 use crate::settings::logic::keys::UserKeys;
 
 struct PackEntry {
@@ -12,19 +14,34 @@ struct PackEntry {
     size: usize,
 }
 
+fn map_keys_to_nyanko(user_keys: &UserKeys) -> cryptology::PackKeys {
+    let tuples = user_keys.as_tuples().into_iter().map(|(k, iv, r)| {
+        let nyanko_region = match r {
+            crate::global::region::Region::En => NyankoRegion::En,
+            crate::global::region::Region::Ja => NyankoRegion::Jp,
+            crate::global::region::Region::Ko => NyankoRegion::Kr,
+            crate::global::region::Region::Tw => NyankoRegion::Tw,
+        };
+        (k.to_string(), iv.to_string(), nyanko_region)
+    }).collect();
+
+    cryptology::PackKeys { tuples }
+}
+
 pub fn run(pack_dir: &Path, tx: Sender<String>, user_keys: &UserKeys) -> Result<(), String> {
+    // Restored to the game-accurate file names
     let list_path = pack_dir.join("DownloadLocal.list");
     let pack_path = pack_dir.join("DownloadLocal.pack");
 
     if !list_path.exists() || !pack_path.exists() {
         return Ok(());
     }
-
+    
     let patch_dir = pack_dir.join("patch");
     fs::create_dir_all(&patch_dir).map_err(|e| e.to_string())?;
 
     let list_data = fs::read(&list_path).map_err(|e| e.to_string())?;
-    let content = decrypt_list_content(&list_data)?;
+    let content = cryptology::decrypt_list(&list_data)?;
 
     let mut entries = Vec::new();
     for line in content.lines() {
@@ -39,6 +56,7 @@ pub fn run(pack_dir: &Path, tx: Sender<String>, user_keys: &UserKeys) -> Result<
     }
 
     let pack_data = fs::read(&pack_path).map_err(|e| e.to_string())?;
+    let nyanko_keys = map_keys_to_nyanko(user_keys);
 
     let extracted_count = AtomicUsize::new(0);
     let failed_count = AtomicUsize::new(0);
@@ -49,7 +67,7 @@ pub fn run(pack_dir: &Path, tx: Sender<String>, user_keys: &UserKeys) -> Result<
         if entry.offset + aligned_size <= pack_data.len() {
             let chunk = &pack_data[entry.offset .. entry.offset + aligned_size];
 
-            match crypto::decrypt_pack_chunk(chunk, &entry.name, user_keys) {
+            match cryptology::decrypt_pack_chunk(chunk, &entry.name, &nyanko_keys) {
                 Ok((decrypted_bytes, _)) => {
                     let final_data = &decrypted_bytes[..std::cmp::min(entry.size, decrypted_bytes.len())];
 
@@ -72,18 +90,4 @@ pub fn run(pack_dir: &Path, tx: Sender<String>, user_keys: &UserKeys) -> Result<
     }
 
     Ok(())
-}
-
-fn decrypt_list_content(data: &[u8]) -> Result<String, String> {
-    let pack_key = crypto::get_md5_key("pack");
-    if let Ok(bytes) = crypto::decrypt_ecb_with_key(data, &pack_key) {
-        if let Ok(s) = String::from_utf8(bytes) { return Ok(s); }
-    }
-
-    let bc_key = crypto::get_md5_key("battlecats");
-    if let Ok(bytes) = crypto::decrypt_ecb_with_key(data, &bc_key) {
-        if let Ok(s) = String::from_utf8(bytes) { return Ok(s); }
-    }
-
-    Err("List decryption failed (Invalid keys or corrupted file)".into())
 }
