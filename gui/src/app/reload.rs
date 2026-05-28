@@ -25,7 +25,7 @@ impl BattleCatsApp {
 
         for viewer in viewers {
             viewer.loaded_id.clear();
-            viewer.held_rig = None;
+            viewer.held_unit = None;
             viewer.current_anim = None;
             viewer.current_frame = 0.0;
             viewer.texture_version += 1;

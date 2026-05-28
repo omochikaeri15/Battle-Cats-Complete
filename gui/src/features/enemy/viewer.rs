@@ -4,11 +4,11 @@ use std::cell::RefCell;
 use std::sync::Arc;
 
 use core::enemy::logic::scanner::EnemyEntry;
-use nyanko::animation::build::Rig;
+use nyanko::animation::engine::Unit;
 use crate::features::animation::viewer::AnimViewer;
 use core::settings::logic::state::Settings;
 use core::enemy::paths::{self, AnimType};
-use core::animation::logic::constants::{IDX_WALK, IDX_IDLE, IDX_ATTACK, IDX_KB, IDX_BURROW, IDX_SURFACE};
+use core::animation::constants::{IDX_WALK, IDX_IDLE, IDX_ATTACK, IDX_KB, IDX_BURROW, IDX_SURFACE};
 use crate::global::shared::DragGuard;
 
 thread_local! {
@@ -20,7 +20,7 @@ pub fn show(
     ctx: &egui::Context,
     enemy_entry: &EnemyEntry,
     anim_viewer: &mut AnimViewer,
-    rig_sync: &mut Option<Arc<Rig>>, // Waiter Pattern Bridge
+    unit_sync: &mut Option<Arc<Unit>>, // Waiter Pattern Bridge
     settings: &mut Settings,
     drag_guard: &mut DragGuard,
 ) {
@@ -63,6 +63,6 @@ pub fn show(
             c.2 = primary_assets;
         }
 
-        anim_viewer.show(ui, ctx, &c.0, &String::new(), &c.1, c.2.clone(), None, rig_sync, settings, drag_guard);
+        anim_viewer.show(ui, ctx, &c.0, &String::new(), &c.1, c.2.clone(), None, unit_sync, settings, drag_guard);
     });
 }

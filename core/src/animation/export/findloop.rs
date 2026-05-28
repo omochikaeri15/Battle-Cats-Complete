@@ -2,98 +2,63 @@ use std::sync::{mpsc, Arc, atomic::{AtomicBool, Ordering}};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use crate::global::formats::mamodel::Model;
-use crate::global::formats::maanim::Animation;
-use crate::animation::logic::{animator, transform};
+// STRICT BOUNDARY: Only importing the public aggregate roots
+use nyanko::animation::engine::{Unit, Anim};
 use crate::animation::export::state::LoopStatus;
 
 const TIMEOUT_SECONDS: u64 = 180;
 
 pub fn start_search(
-    model: Model,
-    anim: Animation,
-    tolerance: i32,
-    min_loop: i32,
-    max_loop: Option<i32>,
-    status_tx: mpsc::Sender<LoopStatus>,
-    abort_flag: Arc<AtomicBool>
+    unit: Arc<Unit>,
+    animation: Arc<Anim>,
+    tolerance: f32,
+    minimum_loop_length: i32,
+    maximum_loop_length: Option<i32>,
+    status_sender: mpsc::Sender<LoopStatus>,
+    abort_signal: Arc<AtomicBool>
 ) {
     thread::spawn(move || {
         let start_time = Instant::now();
-        let mut frame_states: Vec<Vec<([f32; 9], f32)>> = Vec::new();
 
-        let mut current_frame = 0;
-
-        // ALLOCATE ONCE BEFORE THE LOOP
-        let mut state_buffer = model.parts.clone();
-
-        loop {
-            if abort_flag.load(Ordering::Relaxed) {
-                let _ = status_tx.send(LoopStatus::Error("Aborted".to_string()));
-                break;
-            }
-            if start_time.elapsed().as_secs() > TIMEOUT_SECONDS {
-                let _ = status_tx.send(LoopStatus::Error("Timed out (3 mins)".to_string()));
-                break;
-            }
-
-            let f = current_frame as f32;
-
-            animator::animate(&model, &anim, f, &mut state_buffer);
-            let world_parts = transform::solve_hierarchy(&state_buffer, &model);
-
-            let mut current_state = Vec::with_capacity(world_parts.len());
-            for part in &world_parts {
-                current_state.push((part.matrix, part.opacity));
-            }
-
-            let mut found_match = None;
-
-            for (past_frame_idx, past_state) in frame_states.iter().enumerate() {
-                let loop_len = current_frame - past_frame_idx as i32;
-
-                if loop_len < min_loop { continue; }
-
-                if let Some(max) = max_loop {
-                    if loop_len > max { continue; }
+        // Delegate the heavy lifting to the library, passing a callback for orchestrator logic
+        let cycle_result = unit.calculate_cycle(
+            &animation,
+            tolerance,
+            Some(minimum_loop_length),
+            maximum_loop_length,
+            |current_frame| {
+                // Return false to instruct the nyanko engine to abort the search
+                if abort_signal.load(Ordering::Relaxed) {
+                    return false;
                 }
 
-                let mut diff_sum = 0.0;
-
-                for (i, (c_mat, c_op)) in current_state.iter().enumerate() {
-                    if let Some((p_mat, p_op)) = past_state.get(i) {
-                        diff_sum += (c_mat[6] - p_mat[6]).abs();
-                        diff_sum += (c_mat[7] - p_mat[7]).abs();
-
-                        diff_sum += (c_mat[0] - p_mat[0]).abs() * 100.0;
-                        diff_sum += (c_mat[1] - p_mat[1]).abs() * 100.0;
-                        diff_sum += (c_mat[3] - p_mat[3]).abs() * 100.0;
-                        diff_sum += (c_mat[4] - p_mat[4]).abs() * 100.0;
-
-                        diff_sum += (c_op - p_op).abs() * 255.0;
-                    }
+                if start_time.elapsed().as_secs() > TIMEOUT_SECONDS {
+                    let _ = status_sender.send(LoopStatus::Error("Timed out (3 mins)".to_string()));
+                    return false;
                 }
 
-                if diff_sum <= tolerance as f32 {
-                    found_match = Some(past_frame_idx as i32);
-                    break;
+                // GUI updates
+                if current_frame % 5 == 0 {
+                    let _ = status_sender.send(LoopStatus::Searching(current_frame));
                 }
+
+                // Yield thread execution briefly to prevent locking the GUI host
+                if current_frame % 100 == 0 {
+                    thread::sleep(Duration::from_millis(1));
+                }
+
+                true // Continue searching
             }
+        );
 
-            if let Some(start_f) = found_match {
-                let _ = status_tx.send(LoopStatus::Found(start_f, current_frame));
-                break;
+        match cycle_result {
+            Some((start_frame, end_frame)) => {
+                let _ = status_sender.send(LoopStatus::Found(start_frame, end_frame));
             }
-
-            frame_states.push(current_state);
-            current_frame += 1;
-
-            if current_frame % 5 == 0 {
-                let _ = status_tx.send(LoopStatus::Searching(current_frame as usize));
-            }
-
-            if current_frame % 100 == 0 {
-                thread::sleep(Duration::from_millis(1));
+            None => {
+                if !abort_signal.load(Ordering::Relaxed) && start_time.elapsed().as_secs() <= TIMEOUT_SECONDS {
+                    let _ = status_sender.send(LoopStatus::Error("No loop found within limits".to_string()));
+                }
             }
         }
     });

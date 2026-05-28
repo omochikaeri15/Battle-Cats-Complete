@@ -4,7 +4,7 @@ use std::sync::Arc;
 use core::cat::logic::scanner::CatEntry;
 use crate::features::cat::header::DetailTab;
 use crate::global::sheet::GuiSpriteSheet;
-use nyanko::animation::build::Rig; // Add Rig import
+use nyanko::animation::engine::Unit; // Add Rig import
 use core::settings::logic::Settings;
 use crate::features::animation::viewer::AnimViewer;
 use core::cat::data::skilllevel::TalentCost;
@@ -30,7 +30,7 @@ pub fn show(
     current_key: &mut String,
     img015_sheets: &mut Vec<GuiSpriteSheet>,
     img022_sheets: &mut Vec<GuiSpriteSheet>,
-    rig_sync: &mut Option<Arc<Rig>>, // Swapped Model/Sheet for Rig
+    unit_sync: &mut Option<Arc<Unit>>, // Swapped Model/Sheet for Rig
     anim_viewer: &mut AnimViewer,
     talent_name_cache: &mut HashMap<String, egui::TextureHandle>,
     gatya_item_textures: &mut HashMap<i32, Option<egui::TextureHandle>>,
@@ -112,13 +112,13 @@ pub fn show(
     ui.separator();
     ui.add_space(0.0);
 
-    // FIX: Clear the new held_rig structure
+    // FIX: Clear the new held_unit structure
     if *current_tab != DetailTab::Animation {
         if !anim_viewer.loaded_id.is_empty() {
-            anim_viewer.held_rig = None;
+            anim_viewer.held_unit = None;
             anim_viewer.current_anim = None;
             anim_viewer.loaded_id.clear();
-            *rig_sync = None;
+            *unit_sync = None;
         }
     }
 
@@ -172,7 +172,7 @@ pub fn show(
             );
         }
         DetailTab::Animation => {
-            viewer::show(ui, ctx, cat_entry, *current_form, anim_viewer, rig_sync, settings, drag_guard);
+            viewer::show(ui, ctx, cat_entry, *current_form, anim_viewer, unit_sync, settings, drag_guard);
         }
     }
 }

@@ -1,12 +1,10 @@
 use std::sync::{Arc, Mutex, mpsc, atomic::AtomicBool};
 use std::path::{PathBuf, Path};
 
-use crate::global::formats::mamodel::Model;
-use crate::global::formats::maanim::Animation;
+use nyanko::animation::engine::Anim;
+
 use crate::animation::export::encoding::{ExportConfig, ExportFormat, EncoderStatus};
 use crate::animation::export::state::{ExporterState, ExportMode};
-use crate::animation::logic::{animator, smooth, transform};
-use crate::animation::logic::transform::WorldTransform;
 use crate::animation::export::leader;
 
 pub static STATUS_RX: Mutex<Option<mpsc::Receiver<EncoderStatus>>> = Mutex::new(None);
@@ -112,54 +110,45 @@ pub fn start_export(state: &mut ExporterState) {
     leader::start_encoding_thread(config, receiver, status_sender, abort_signal);
 }
 
-pub fn calculate_export_frame(
+pub fn calculate_export_time(
     state: &ExporterState,
-    model: &Model,
-    anim: Option<&Animation>,
+    animation_option: Option<&Anim>,
     current_time: f32,
-) -> Vec<WorldTransform> {
-    let parts = if let Some(animation) = anim {
-        let raw_frame = if state.export_mode == ExportMode::Showcase {
-            current_time
-        } else {
-            let start = state.frame_start;
-            let step = if state.frame_start < state.frame_end { 1 } else { -1 };
-            (start + (state.current_progress * step)) as f32
-        };
-
-        let frame_to_render = if state.export_mode == ExportMode::Showcase {
-            let natively_loops = animation.curves.iter().any(|c| c.loop_count != 1);
-            if natively_loops {
-                raw_frame
-            } else {
-                let effective_max = animation.curves.iter()
-                    .filter_map(|c| c.keyframes.last().map(|k| k.frame))
-                    .max()
-                    .unwrap_or(0);
-                if effective_max > 0 {
-                    raw_frame.rem_euclid(effective_max as f32 + 1.0)
-                } else {
-                    raw_frame
-                }
-            }
-        } else if state.loop_supported {
-            raw_frame
-        } else if state.max_frame > 0 {
-            raw_frame.rem_euclid(state.max_frame as f32 + 1.0)
-        } else {
-            raw_frame
-        };
-
-        if state.interpolation {
-            smooth::animate(model, animation, frame_to_render)
-        } else {
-            let mut buffer = model.parts.clone();
-            animator::animate(model, animation, frame_to_render, &mut buffer);
-            buffer
-        }
-    } else {
-        model.parts.clone()
+) -> f32 {
+    let Some(animation) = animation_option else {
+        return 0.0;
     };
 
-    transform::solve_hierarchy(&parts, model)
+    let raw_frame = if state.export_mode == ExportMode::Showcase {
+        current_time
+    } else {
+        let start = state.frame_start;
+        let step = if state.frame_start < state.frame_end { 1 } else { -1 };
+        (start + (state.current_progress * step)) as f32
+    };
+
+    if state.export_mode == ExportMode::Showcase {
+        let natively_loops = animation.curves.iter().any(|c| c.loop_count != 1);
+
+        if natively_loops {
+            raw_frame
+        } else {
+            let effective_maximum = animation.curves.iter()
+                .filter_map(|c| c.keyframes.last().map(|k| k.frame))
+                .max()
+                .unwrap_or(0);
+
+            if effective_maximum > 0 {
+                raw_frame.rem_euclid(effective_maximum as f32 + 1.0)
+            } else {
+                raw_frame
+            }
+        }
+    } else if state.loop_supported {
+        raw_frame
+    } else if state.max_frame > 0 {
+        raw_frame.rem_euclid(state.max_frame as f32 + 1.0)
+    } else {
+        raw_frame
+    }
 }

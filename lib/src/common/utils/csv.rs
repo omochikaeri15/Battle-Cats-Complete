@@ -1,10 +1,11 @@
-pub(crate) fn detect_separator(text: &str) -> char {
+#[allow(dead_code)]
+pub fn detect_separator(text: &str) -> char {
     if text.contains('|') { return '|'; }
     if text.contains('\t') { return '\t'; }
     ',' // Default
 }
 
-pub(crate) fn scrub(bytes: &[u8]) -> String {
+pub fn scrub(bytes: &[u8]) -> String {
     String::from_utf8_lossy(bytes)
         .replace('\u{feff}', "") // Strip BOM
         .replace('\0', "")       // Strip Null bytes (UTF-16 faux-ASCII)

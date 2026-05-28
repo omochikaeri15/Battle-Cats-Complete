@@ -5,7 +5,7 @@ pub struct ModelPart {
     pub parent_id: i32, pub unit_id: i32, pub sprite_index: i32, pub drawing_layer: i32,
     pub position_x: f32, pub position_y: f32, pub pivot_x: f32, pub pivot_y: f32,
     pub scale_x: f32, pub scale_y: f32, pub rotation: f32, pub alpha: f32,
-    pub glow_mode: i32, pub flip_x: bool, pub flip_y: bool, pub name: String,
+    pub glow_mode: i32, pub flip_x: bool, pub flip_y: bool, #[allow(dead_code)] pub name: String,
 }
 
 impl Default for ModelPart {
@@ -22,7 +22,7 @@ impl Default for ModelPart {
 #[derive(Clone, Debug)]
 pub struct Model {
     pub parts: Vec<ModelPart>,
-    pub version: u32,
+    #[allow(dead_code)] pub version: u32,
     pub scale_unit: f32,
     pub angle_unit: f32,
     pub alpha_unit: f32,

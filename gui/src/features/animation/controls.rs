@@ -2,7 +2,7 @@ use eframe::egui;
 use std::path::PathBuf;
 use crate::features::animation::viewer::AnimViewer;
 use core::settings::logic::state::Settings;
-use nyanko::animation::find;
+use nyanko::animation::engine::Anim;
 
 const TILE_HEIGHT: f32 = 28.0;
 const GAP: f32 = 4.0;
@@ -106,7 +106,7 @@ fn render_internal_ui(
 
     let (loop_lcm_result, max_frame_value) = if let Some(animation) = &anim_viewer.current_anim {
         if anim_viewer.loaded_anim_index <= 1 {
-            let true_loop = find::loop_frames(animation);
+            let true_loop = Anim::calculate_true_loop(animation);
             (true_loop, true_loop.unwrap_or(animation.max_frame))
         } else {
             (Some(animation.max_frame), animation.max_frame)

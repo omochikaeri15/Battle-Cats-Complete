@@ -2,28 +2,27 @@ use eframe::egui;
 use std::time::Duration;
 use std::path::PathBuf;
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
-use core::global::formats::mamodel::Model;
-use core::global::formats::maanim::Animation;
-use crate::global::sheet::GuiSpriteSheet;
+
+// STRICT BOUNDARY: Importing exclusively from the public engine API
+use nyanko::animation::engine::{Unit, Anim};
+
 use core::animation::export::encoding::{ExportFormat, EncoderStatus};
 use core::animation::export::state::{ExporterState, ExportMode, LoopStatus};
 use core::animation::export::process::{start_export, STATUS_RX};
 use core::animation::export::findloop;
 use crate::features::settings::toggle_ui;
-use core::animation::logic::bounds;
 use core::addons::toolpaths::{self, Presence};
 use core::settings::logic::state::Settings;
 use crate::global::shared::DragGuard;
 
-const EXPORT_MODE_SPACING: f32 = 2.0; 
+const EXPORT_MODE_SPACING: f32 = 2.0;
 const CAMERA_COLUMN_WIDTH: f32 = 5.0;
 
 pub fn show_popup(
     ui: &mut egui::Ui,
     state: &mut ExporterState,
-    model: Option<&Model>,
-    anim: Option<&Animation>,
-    sheet: Option<&GuiSpriteSheet>,
+    unit: Option<Arc<Unit>>,
+    animation: Option<Arc<Anim>>,
     start_region_selection: &mut bool,
     settings: &mut Settings,
     available_anims: &[(usize, PathBuf)],
@@ -36,7 +35,7 @@ pub fn show_popup(
     if state.format == ExportFormat::Avif && is_avif_missing {
         state.format = ExportFormat::Gif;
     }
-    
+
     match state.format {
         ExportFormat::Mp4 | ExportFormat::Mkv | ExportFormat::Webm | ExportFormat::Png => {
             if is_ffmpeg_missing {
@@ -55,8 +54,8 @@ pub fn show_popup(
                     match status_message {
                         EncoderStatus::Encoding => { },
                         EncoderStatus::Progress(progress) => { state.encoded_frames = progress as i32; },
-                        EncoderStatus::Finished => { 
-                            state.is_processing = false; 
+                        EncoderStatus::Finished => {
+                            state.is_processing = false;
                             state.completion_time = Some(ui.input(|input| input.time));
                             ui.ctx().data_mut(|data_store| data_store.insert_temp(egui::Id::new("export_done_seen"), false));
                         }
@@ -68,10 +67,10 @@ pub fn show_popup(
 
     // LOOP SEARCH STATUS POLLING
     let mut is_loop_finished = false;
-    
+
     if state.is_loop_searching {
         ui.ctx().request_repaint_after(Duration::from_millis(50));
-        
+
         if let Some(loop_receiver) = &state.loop_rx {
             while let Ok(loop_message) = loop_receiver.try_recv() {
                 match loop_message {
@@ -81,7 +80,7 @@ pub fn show_popup(
                         state.frame_end = loop_end;
                         state.frame_start_str = loop_start.to_string();
                         state.frame_end_str = loop_end.to_string();
-                        
+
                         state.completion_time = Some(ui.input(|input| input.time));
                         is_loop_finished = true;
                     },
@@ -92,19 +91,19 @@ pub fn show_popup(
                         if error_message.contains("Timed out") {
                             state.loop_result_msg = Some("Loop Search Timeout (180s)".to_string());
                         } else {
-                             state.loop_result_msg = Some(error_message);
+                            state.loop_result_msg = Some(error_message);
                         }
-                        
+
                         state.completion_time = Some(ui.input(|input| input.time));
                         ui.ctx().data_mut(|data_store| data_store.insert_temp(egui::Id::new("export_done_seen"), false));
-                        
+
                         is_loop_finished = true;
                     }
                 }
             }
         }
     }
-    
+
     if is_loop_finished {
         state.is_loop_searching = false;
         state.loop_rx = None;
@@ -128,97 +127,95 @@ pub fn show_popup(
     let mut window = egui::Window::new("Export Animation")
         .id(window_id).open(&mut is_popup_open).order(egui::Order::Foreground)
         .constrain(false).movable(allow_drag).collapsible(false)
-        .resizable(false) 
+        .resizable(false)
         .default_pos(context.screen_rect().center() - egui::vec2(200.0, 260.0));
 
     if let Some(position) = fixed_position { window = window.current_pos(position); }
-        
-    window.show(&context, |ui| { 
+
+    window.show(&context, |ui| {
         egui::Resize::default()
             .id(egui::Id::new("export_resize_area"))
             .default_size([400.0, 560.0])
             .min_size([250.0, 300.0])
-            .with_stroke(false) 
+            .with_stroke(false)
             .show(ui, |ui| {
-                render_content(ui, state, model, anim, sheet, start_region_selection, settings, available_anims); 
+                render_content(ui, state, unit, animation, start_region_selection, settings, available_anims);
             });
     });
-    
+
     if !is_popup_open { settings.animation.export_popup_open = false; }
 }
 
 fn render_content(
     ui: &mut egui::Ui,
     state: &mut ExporterState,
-    model: Option<&Model>,
-    anim: Option<&Animation>,
-    sheet: Option<&GuiSpriteSheet>,
+    unit: Option<Arc<Unit>>,
+    animation: Option<Arc<Anim>>,
     start_region_selection: &mut bool,
     settings: &mut Settings,
     available_anims: &[(usize, PathBuf)],
 ) {
     if state.anim_name.is_empty() {
-        if let Some(animation_data) = anim {
+        if let Some(animation_data) = &animation {
             if state.max_frame == 0 || state.max_frame == 100 {
                 state.max_frame = animation_data.max_frame;
             }
             if state.frame_end_str.is_empty() { state.frame_end = animation_data.max_frame; }
         }
-        state.anim_name = "Animation".to_string(); 
+        state.anim_name = "Animation".to_string();
     }
 
-    let bottom_height = 114.0; 
+    let bottom_height = 114.0;
     let available_height = ui.available_height() - bottom_height;
-
     let is_ui_locked = state.is_processing || state.is_loop_searching;
 
     egui::ScrollArea::vertical().max_height(available_height).auto_shrink([false, false]).show(ui, |ui| {
         ui.add_space(5.0);
-        ui.heading("Input"); 
+        ui.heading("Input");
         ui.add_space(5.0);
 
         // Export Mode Dropdown
         ui.add_enabled_ui(!is_ui_locked, |ui| {
             ui.horizontal(|ui| {
-                 ui.label("Mode");
-                 let mut selected_mode = state.export_mode.clone();
-                 egui::ComboBox::from_id_salt("ex_mode").selected_text(match selected_mode {
-                     ExportMode::Manual => "Manual",
-                     ExportMode::Loop => "Loop",
-                     ExportMode::Showcase => "Showcase",
-                 }).show_ui(ui, |ui| {
-                     ui.selectable_value(&mut selected_mode, ExportMode::Manual, "Manual");
-                     
-                     if state.loop_supported {
-                         ui.selectable_value(&mut selected_mode, ExportMode::Loop, "Loop");
-                     } else {
-                         let disabled_label = ui.add_enabled(false, egui::SelectableLabel::new(false, "Loop"));
-                         disabled_label.on_disabled_hover_text("Walk and Idle only");
-                     }
-                     
-                     ui.selectable_value(&mut selected_mode, ExportMode::Showcase, "Showcase");
-                 });
-                 if selected_mode != state.export_mode {
-                     // Mode Switch Logic
-                     if selected_mode == ExportMode::Showcase {
-                         state.showcase_walk_str.clear();
-                         state.showcase_idle_str.clear();
-                         state.showcase_attack_str.clear();
-                         state.showcase_kb_str.clear();
-                         state.frame_start = 0;
-                     }
-                     if selected_mode == ExportMode::Manual && state.export_mode == ExportMode::Loop {
+                ui.label("Mode");
+                let mut selected_mode = state.export_mode.clone();
+                egui::ComboBox::from_id_salt("ex_mode").selected_text(match selected_mode {
+                    ExportMode::Manual => "Manual",
+                    ExportMode::Loop => "Loop",
+                    ExportMode::Showcase => "Showcase",
+                }).show_ui(ui, |ui| {
+                    ui.selectable_value(&mut selected_mode, ExportMode::Manual, "Manual");
+
+                    if state.loop_supported {
+                        ui.selectable_value(&mut selected_mode, ExportMode::Loop, "Loop");
+                    } else {
+                        let disabled_label = ui.add_enabled(false, egui::SelectableLabel::new(false, "Loop"));
+                        disabled_label.on_disabled_hover_text("Walk and Idle only");
+                    }
+
+                    ui.selectable_value(&mut selected_mode, ExportMode::Showcase, "Showcase");
+                });
+                if selected_mode != state.export_mode {
+                    // Mode Switch Logic
+                    if selected_mode == ExportMode::Showcase {
+                        state.showcase_walk_str.clear();
+                        state.showcase_idle_str.clear();
+                        state.showcase_attack_str.clear();
+                        state.showcase_kb_str.clear();
+                        state.frame_start = 0;
+                    }
+                    if selected_mode == ExportMode::Manual && state.export_mode == ExportMode::Loop {
                         state.frame_start = 0;
                         state.frame_end = 0;
                         state.frame_start_str.clear();
                         state.frame_end_str.clear();
-                     }
-                     
-                     state.completion_time = None; 
-                     state.current_progress = 0;
-                     state.encoded_frames = 0;
-                     state.export_mode = selected_mode;
-                 }
+                    }
+
+                    state.completion_time = None;
+                    state.current_progress = 0;
+                    state.encoded_frames = 0;
+                    state.export_mode = selected_mode;
+                }
             });
         });
         ui.add_space(5.0);
@@ -231,28 +228,28 @@ fn render_content(
 
                         let start_hint = egui::RichText::new("0").color(egui::Color32::GRAY);
                         let start_response = ui.add(egui::TextEdit::singleline(&mut state.frame_start_str).hint_text(start_hint).desired_width(40.0));
-                        if state.frame_start_str.trim().is_empty() { 
-                            state.frame_start = 0; 
-                        } else if let Ok(parsed_start) = state.frame_start_str.trim().parse::<i32>() { 
-                            state.frame_start = parsed_start; 
+                        if state.frame_start_str.trim().is_empty() {
+                            state.frame_start = 0;
+                        } else if let Ok(parsed_start) = state.frame_start_str.trim().parse::<i32>() {
+                            state.frame_start = parsed_start;
                         }
-                        
+
                         ui.label("f");
-                        ui.add_space(5.0); 
+                        ui.add_space(5.0);
                         ui.label("~");
-                        ui.add_space(5.0); 
-                        
-                        let hint_value = anim.map_or(0, |animation| animation.max_frame);
+                        ui.add_space(5.0);
+
+                        let hint_value = animation.as_ref().map_or(0, |a| a.max_frame);
                         let end_hint = egui::RichText::new(hint_value.to_string()).color(egui::Color32::GRAY);
                         let end_response = ui.add(egui::TextEdit::singleline(&mut state.frame_end_str).hint_text(end_hint).desired_width(40.0));
-                        if state.frame_end_str.trim().is_empty() { 
-                            state.frame_end = hint_value; 
-                        } else if let Ok(parsed_end) = state.frame_end_str.trim().parse::<i32>() { 
-                            state.frame_end = parsed_end; 
+                        if state.frame_end_str.trim().is_empty() {
+                            state.frame_end = hint_value;
+                        } else if let Ok(parsed_end) = state.frame_end_str.trim().parse::<i32>() {
+                            state.frame_end = parsed_end;
                         }
-                        
+
                         ui.label("f");
-    
+
                         if start_response.changed() || end_response.changed() {
                             state.completion_time = None;
                             state.current_progress = 0;
@@ -262,7 +259,6 @@ fn render_content(
                 });
             },
             ExportMode::Loop => {
-                // Locked when locked
                 ui.add_enabled_ui(!is_ui_locked, |ui| {
                     egui::Grid::new("loop_settings_grid").num_columns(2).spacing([10.0, 8.0]).show(ui, |ui| {
                         // Row 1: Tolerance
@@ -277,7 +273,7 @@ fn render_content(
                             ui.label("%");
                         });
                         ui.end_row();
-                        
+
                         // Row 2: Minimum
                         ui.label("Loop Minimum");
                         ui.horizontal(|ui| {
@@ -297,11 +293,11 @@ fn render_content(
                             ui.spacing_mut().item_spacing.x = EXPORT_MODE_SPACING;
                             let hint = egui::RichText::new("None").color(egui::Color32::GRAY);
                             if ui.add(egui::TextEdit::singleline(&mut state.loop_max_str).hint_text(hint).desired_width(40.0)).changed() {
-                                 if state.loop_max_str.trim().is_empty() {
-                                     state.loop_max = None;
-                                 } else if let Ok(parsed_max) = state.loop_max_str.parse::<i32>() { 
-                                     state.loop_max = Some(parsed_max); 
-                                 }
+                                if state.loop_max_str.trim().is_empty() {
+                                    state.loop_max = None;
+                                } else if let Ok(parsed_max) = state.loop_max_str.parse::<i32>() {
+                                    state.loop_max = Some(parsed_max);
+                                }
                             }
                             ui.label("f");
                         });
@@ -325,17 +321,20 @@ fn render_content(
                         ui.add_enabled(false, egui::Label::new("f"));
                     });
                 });
-                
+
                 ui.add_space(5.0);
                 if state.is_loop_searching {
-                        let abort_button = egui::Button::new("Abort Loop").fill(egui::Color32::from_rgb(180, 50, 50));
-                        if ui.add_sized(egui::vec2(ui.available_width(), 24.0), abort_button).clicked() {
-                            if let Some(abort_flag) = &state.loop_abort {
-                                abort_flag.store(true, Ordering::Relaxed);
-                            }
-                            state.loop_result_msg = Some("Loop Terminated!".to_string());
-                            state.completion_time = Some(ui.input(|input| input.time));
+                    let abort_button = egui::Button::new("Abort Loop").fill(egui::Color32::from_rgb(180, 50, 50));
+                    if ui.add_sized(egui::vec2(ui.available_width(), 24.0), abort_button).clicked() {
+                        if let Some(abort_flag) = &state.loop_abort {
+                            abort_flag.store(true, Ordering::Relaxed);
                         }
+                        state.loop_result_msg = Some("Loop Terminated!".to_string());
+                        state.completion_time = Some(ui.input(|input| input.time));
+                        state.is_loop_searching = false;
+                        state.loop_rx = None;
+                        state.loop_abort = None;
+                    }
                 } else {
                     ui.add_enabled_ui(!state.is_processing, |ui| {
                         // CHECK FOR LOOP TERMINATION
@@ -352,16 +351,16 @@ fn render_content(
 
                         let search_context = ui.ctx().clone();
                         let mut trigger_search = || {
-                            let Some(model_data) = model else { return; };
-                            let Some(animation_data) = anim else { return; };
-                            
+                            let Some(unit_arc) = unit.clone() else { return; };
+                            let Some(animation_arc) = animation.clone() else { return; };
+
                             let mut parsed_tolerance = 30;
                             if !state.loop_tolerance_str.is_empty() {
                                 if let Ok(val) = state.loop_tolerance_str.parse() {
                                     parsed_tolerance = val;
                                 }
                             }
-                            
+
                             let mut parsed_minimum = 15;
                             if !state.loop_min_str.is_empty() {
                                 if let Ok(val) = state.loop_min_str.parse() {
@@ -375,15 +374,24 @@ fn render_content(
                             let (search_sender, search_receiver) = std::sync::mpsc::channel();
                             state.loop_rx = Some(search_receiver);
                             state.is_loop_searching = true;
-                            
+
                             state.loop_frames_searched = 0;
                             state.loop_search_start_time = Some(search_context.input(|input| input.time));
-                            
+
                             let abort_signal = Arc::new(AtomicBool::new(false));
                             state.loop_abort = Some(abort_signal.clone());
-                            
-                            findloop::start_search(model_data.clone(), animation_data.clone(), parsed_tolerance, parsed_minimum, state.loop_max, search_sender, abort_signal);
-                            
+
+                            // Passing the mathematical difference threshold directly to the Orchestrator
+                            findloop::start_search(
+                                unit_arc,
+                                animation_arc,
+                                parsed_tolerance as f32,
+                                parsed_minimum,
+                                state.loop_max,
+                                search_sender,
+                                abort_signal
+                            );
+
                             // Reset termination msg
                             state.loop_result_msg = None;
                             state.completion_time = None;
@@ -408,7 +416,7 @@ fn render_content(
                     let hint_walk = egui::RichText::new(state.detected_walk_len.to_string()).color(egui::Color32::GRAY);
                     let hint_idle = egui::RichText::new(state.detected_idle_len.to_string()).color(egui::Color32::GRAY);
                     let hint_kb = egui::RichText::new(settings.animation.default_showcase_kb.to_string()).color(egui::Color32::GRAY);
-                    
+
                     egui::Grid::new("showcase_grid").spacing([10.0, 4.0]).show(ui, |ui| {
                         ui.label("Walk");
                         ui.horizontal(|ui| {
@@ -427,7 +435,7 @@ fn render_content(
                             ui.label("f");
                         });
                         ui.end_row();
-    
+
                         ui.label("Idle");
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing.x = EXPORT_MODE_SPACING;
@@ -445,7 +453,7 @@ fn render_content(
                             ui.label("f");
                         });
                         ui.end_row();
-    
+
                         ui.label("Attack");
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing.x = EXPORT_MODE_SPACING;
@@ -464,7 +472,7 @@ fn render_content(
                             ui.label("f");
                         });
                         ui.end_row();
-    
+
                         ui.label("Knockback");
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing.x = EXPORT_MODE_SPACING;
@@ -488,60 +496,83 @@ fn render_content(
         }
 
         ui.add_space(20.0);
-        ui.heading("Camera"); 
+        ui.heading("Camera");
         ui.add_space(5.0);
 
         ui.add_enabled_ui(!is_ui_locked, |ui| {
             ui.horizontal(|ui| {
-                if ui.button("Set Camera").on_hover_text("Right-click and drag on the viewport to select area").clicked() { 
-                    *start_region_selection = true; 
+                if ui.button("Set Camera").on_hover_text("Right-click and drag on the viewport to select area").clicked() {
+                    *start_region_selection = true;
                     settings.animation.export_popup_open = false;
-                }                
-                if ui.button("Use Bounds").on_hover_text("Auto-calculate camera from unit size").clicked() { 
+                }
+                if ui.button("Use Bounds").on_hover_text("Auto-calculate camera from unit size").clicked() {
                     let mut was_calculated = false;
-                    if let (Some(model_data), Some(sheet_data)) = (model, sheet) {
-                        
-                        let master_bounds = if state.export_mode == ExportMode::Showcase {
-                            bounds::calculate_showcase_bounds(
-                                model_data, &sheet_data.core, available_anims,
-                                state.showcase_walk_len, state.showcase_idle_len, 
-                                state.showcase_attack_len, state.showcase_kb_len,
-                                settings.animation.use_tight_bounds
-                            )
-                        } else {
-                            if settings.animation.use_tight_bounds {
-                                bounds::calculate_tight_bounds(model_data, anim, &sheet_data.core)
-                            } else {
-                                bounds::calculate_loose_bounds(model_data, anim, &sheet_data.core)
-                            }
-                        };
 
-                        if let Some(calculated_bounds) = master_bounds {
-                            state.region_x = calculated_bounds.min_x;
-                            state.region_y = calculated_bounds.min_y;
-                            state.region_w = calculated_bounds.width();
-                            state.region_h = calculated_bounds.height();
-                            state.zoom = 1.0;
-                            was_calculated = true;
+                    if let Some(unit_data) = &unit {
+
+                        // Pass the pure math tolerance scale directly to the library
+                        let tolerance_level = if settings.animation.use_tight_bounds { 1.0 } else { 0.0 };
+
+                        let mut showcase_anims = Vec::new();
+                        let mut animation_references = Vec::new();
+
+                        if state.export_mode == ExportMode::Showcase {
+                            // Gather all 4 critical showcase animations
+                            let target_indices = [
+                                core::animation::constants::IDX_WALK,
+                                core::animation::constants::IDX_IDLE,
+                                core::animation::constants::IDX_ATTACK,
+                                core::animation::constants::IDX_KB,
+                            ];
+
+                            for target_index in target_indices {
+                                if let Some((_, path)) = available_anims.iter().find(|(idx, _)| *idx == target_index) {
+                                    if let Ok(file_bytes) = std::fs::read(path) {
+                                        if let Some(parsed_animation) = Anim::parse(&file_bytes) {
+                                            showcase_anims.push(parsed_animation);
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Map them to references for the engine API
+                            for anim in &showcase_anims {
+                                animation_references.push(anim);
+                            }
+                        } else if let Some(active_animation) = &animation {
+                            // Standard mode: just use the currently loaded animation
+                            animation_references.push(active_animation.as_ref());
+                        }
+
+                        // The library computes the union of ALL provided animations
+                        if !animation_references.is_empty() {
+                            if let Some((x, y, width, height)) = unit_data.calculate_bounds(&animation_references, tolerance_level) {
+                                state.region_x = x;
+                                state.region_y = y;
+                                state.region_w = width;
+                                state.region_h = height;
+                                state.zoom = 1.0;
+                                was_calculated = true;
+                            }
                         }
                     }
 
                     if !was_calculated {
-                        state.region_x = 0.0; 
-                        state.region_y = 0.0; 
-                        state.region_w = 0.0; 
-                        state.region_h = 0.0; 
-                        state.zoom = 1.0; 
+                        state.region_x = 0.0;
+                        state.region_y = 0.0;
+                        state.region_w = 0.0;
+                        state.region_h = 0.0;
+                        state.zoom = 1.0;
                     }
                 }
             });
             ui.add_space(5.0);
-            
+
             // Camera Grid
             egui::Grid::new("camera_grid")
                 .num_columns(4)
                 .spacing([10.0, 4.0])
-                .min_col_width(CAMERA_COLUMN_WIDTH) 
+                .min_col_width(CAMERA_COLUMN_WIDTH)
                 .show(ui, |ui| {
                     ui.label("X"); ui.add(egui::DragValue::new(&mut state.region_x).speed(1.0));
                     ui.label("Y"); ui.add(egui::DragValue::new(&mut state.region_y).speed(1.0));
@@ -554,179 +585,179 @@ fn render_content(
         });
 
         ui.add_space(20.0);
-        ui.heading("Output"); 
+        ui.heading("Output");
         ui.add_space(5.0);
 
         ui.add_enabled_ui(!is_ui_locked, |ui| {
             egui::Grid::new("out_grid").num_columns(2).spacing([10.0, 8.0]).show(ui, |ui| {
-                    // NAME
-                    ui.label("Name");
-                    let (display_start, display_end) = if state.export_mode == ExportMode::Showcase {
-                         let total_frames = state.showcase_walk_len + state.showcase_idle_len + state.showcase_attack_len + state.showcase_kb_len;
-                         let end_display = if total_frames > 0 { total_frames - 1 } else { 0 };
-                         (0, end_display)
-                    } else { (state.frame_start, state.frame_end) };
-    
-                    let range_part = if display_start == display_end { format!("{}f", display_start) } else { format!("{}f~{}f", display_start, display_end) };
-                    let clean_prefix = state.name_prefix.replace("_0", "").replace("_f", "-1").replace("_c", "-2").replace("_s", "-3");
-                    let prefix_display = if state.export_mode == ExportMode::Showcase {
-                         let prefix_parts: Vec<&str> = clean_prefix.split('.').collect();
-                         if !prefix_parts.is_empty() { format!("{}.showcase", prefix_parts[0]) } else { "unit.showcase".to_string() }
-                    } else { clean_prefix.clone() };
-    
-                    let hint_string = if prefix_display.is_empty() { "animation".to_string() } else { format!("{}.{}", prefix_display, range_part) };
-                    ui.add(egui::TextEdit::singleline(&mut state.file_name).hint_text(egui::RichText::new(&hint_string).color(egui::Color32::GRAY)).desired_width(120.0));
-                    ui.end_row();
+                // NAME
+                ui.label("Name");
+                let (display_start, display_end) = if state.export_mode == ExportMode::Showcase {
+                    let total_frames = state.showcase_walk_len + state.showcase_idle_len + state.showcase_attack_len + state.showcase_kb_len;
+                    let end_display = if total_frames > 0 { total_frames - 1 } else { 0 };
+                    (0, end_display)
+                } else { (state.frame_start, state.frame_end) };
 
-                    // FORMAT
-                    ui.label("Format");
-                    let mut selected_format = state.format.clone();
-                    
-                    egui::ComboBox::from_id_salt("fmt_combo")
-                        .width(60.0) 
-                        .selected_text(match selected_format {
-                            ExportFormat::Gif => "GIF", 
-                            ExportFormat::WebP => "WebP", 
-                            ExportFormat::Avif => "AVIF", 
-                            ExportFormat::Png => "PNG", 
-                            ExportFormat::Mp4 => "MP4",
-                            ExportFormat::Mkv => "MKV",
-                            ExportFormat::Webm => "WebM",
-                            ExportFormat::Zip => "ZIP",
-                        }).show_ui(ui, |ui| {
-                            // GIF
-                            ui.selectable_value(&mut selected_format, ExportFormat::Gif, "GIF");
-                            // WebP
-                            ui.selectable_value(&mut selected_format, ExportFormat::WebP, "WebP");
-                            // AVIF
-                            let is_avif_installed = toolpaths::avifenc_status() == Presence::Installed;
-                            let avif_button = ui.add_enabled(is_avif_installed, egui::SelectableLabel::new(selected_format == ExportFormat::Avif, "AVIF"));
-                            if avif_button.clicked() { selected_format = ExportFormat::Avif; }
-                            if !is_avif_installed { avif_button.on_disabled_hover_text("Requires AVIFENC Add-On"); }
-                            
-                            // PNG
-                            let is_ffmpeg_installed = toolpaths::ffmpeg_status() == Presence::Installed;
-                            let png_button = ui.add_enabled(is_ffmpeg_installed, egui::SelectableLabel::new(selected_format == ExportFormat::Png, "PNG"));
-                            if png_button.clicked() { selected_format = ExportFormat::Png; }
-                            if !is_ffmpeg_installed { png_button.on_disabled_hover_text("Requires FFMPEG Add-On"); }
+                let range_part = if display_start == display_end { format!("{}f", display_start) } else { format!("{}f~{}f", display_start, display_end) };
+                let clean_prefix = state.name_prefix.replace("_0", "").replace("_f", "-1").replace("_c", "-2").replace("_s", "-3");
+                let prefix_display = if state.export_mode == ExportMode::Showcase {
+                    let prefix_parts: Vec<&str> = clean_prefix.split('.').collect();
+                    if !prefix_parts.is_empty() { format!("{}.showcase", prefix_parts[0]) } else { "unit.showcase".to_string() }
+                } else { clean_prefix.clone() };
 
-                            // VIDEO
-                            let mp4_button = ui.add_enabled(is_ffmpeg_installed, egui::SelectableLabel::new(selected_format == ExportFormat::Mp4, "MP4"));
-                            if mp4_button.clicked() { selected_format = ExportFormat::Mp4; }
-                            if !is_ffmpeg_installed { mp4_button.on_disabled_hover_text("Requires FFMPEG Add-On"); }
+                let hint_string = if prefix_display.is_empty() { "animation".to_string() } else { format!("{}.{}", prefix_display, range_part) };
+                ui.add(egui::TextEdit::singleline(&mut state.file_name).hint_text(egui::RichText::new(&hint_string).color(egui::Color32::GRAY)).desired_width(120.0));
+                ui.end_row();
 
-                            let mkv_button = ui.add_enabled(is_ffmpeg_installed, egui::SelectableLabel::new(selected_format == ExportFormat::Mkv, "MKV"));
-                            if mkv_button.clicked() { selected_format = ExportFormat::Mkv; }
-                            if !is_ffmpeg_installed { mkv_button.on_disabled_hover_text("Requires FFMPEG Add-On"); }
+                // FORMAT
+                ui.label("Format");
+                let mut selected_format = state.format.clone();
 
-                            let webm_button = ui.add_enabled(is_ffmpeg_installed, egui::SelectableLabel::new(selected_format == ExportFormat::Webm, "WebM"));
-                            if webm_button.clicked() { selected_format = ExportFormat::Webm; }
-                            if !is_ffmpeg_installed { webm_button.on_disabled_hover_text("Requires FFMPEG Add-On"); }
-
-                            // ZIP
-                            ui.selectable_value(&mut selected_format, ExportFormat::Zip, "ZIP");
-                        });
-                        
-                    if selected_format != state.format {
-                        state.format = selected_format.clone();
-                        // SAVE PREFERENCE
-                        settings.animation.last_export_format = match selected_format {
-                            ExportFormat::Gif => 0,
-                            ExportFormat::WebP => 1,
-                            ExportFormat::Avif => 2,
-                            ExportFormat::Png => 3,
-                            ExportFormat::Mp4 => 4,
-                            ExportFormat::Mkv => 5,
-                            ExportFormat::Webm => 6,
-                            ExportFormat::Zip => 7,
-                        };
-                    }
-                    ui.end_row();
-
-                    // CHECK INSTALLED TOOLS
-                    let is_ffmpeg_installed = toolpaths::ffmpeg_status() == Presence::Installed;
+                egui::ComboBox::from_id_salt("fmt_combo")
+                    .width(60.0)
+                    .selected_text(match selected_format {
+                        ExportFormat::Gif => "GIF",
+                        ExportFormat::WebP => "WebP",
+                        ExportFormat::Avif => "AVIF",
+                        ExportFormat::Png => "PNG",
+                        ExportFormat::Mp4 => "MP4",
+                        ExportFormat::Mkv => "MKV",
+                        ExportFormat::Webm => "WebM",
+                        ExportFormat::Zip => "ZIP",
+                    }).show_ui(ui, |ui| {
+                    // GIF
+                    ui.selectable_value(&mut selected_format, ExportFormat::Gif, "GIF");
+                    // WebP
+                    ui.selectable_value(&mut selected_format, ExportFormat::WebP, "WebP");
+                    // AVIF
                     let is_avif_installed = toolpaths::avifenc_status() == Presence::Installed;
+                    let avif_button = ui.add_enabled(is_avif_installed, egui::SelectableLabel::new(selected_format == ExportFormat::Avif, "AVIF"));
+                    if avif_button.clicked() { selected_format = ExportFormat::Avif; }
+                    if !is_avif_installed { avif_button.on_disabled_hover_text("Requires AVIFENC Add-On"); }
 
-                    // QUALITY
-                    let quality_tooltip = "Quality percentage dictates image quality, with lower quality correlating with lower file size";
-                    let (is_quality_enabled, quality_reason) = match state.format {
-                        ExportFormat::WebP | ExportFormat::Gif | ExportFormat::Mp4 | ExportFormat::Mkv | ExportFormat::Webm => 
-                            (is_ffmpeg_installed, if !is_ffmpeg_installed { "Requires FFMPEG (Settings > Add-Ons)" } else { quality_tooltip }),
-                        ExportFormat::Avif => 
-                            (is_avif_installed, if !is_avif_installed { "Requires AVIFENC (Settings > Add-Ons)" } else { quality_tooltip }),
-                        _ => (false, "Not available for this File Type"),
+                    // PNG
+                    let is_ffmpeg_installed = toolpaths::ffmpeg_status() == Presence::Installed;
+                    let png_button = ui.add_enabled(is_ffmpeg_installed, egui::SelectableLabel::new(selected_format == ExportFormat::Png, "PNG"));
+                    if png_button.clicked() { selected_format = ExportFormat::Png; }
+                    if !is_ffmpeg_installed { png_button.on_disabled_hover_text("Requires FFMPEG Add-On"); }
+
+                    // VIDEO
+                    let mp4_button = ui.add_enabled(is_ffmpeg_installed, egui::SelectableLabel::new(selected_format == ExportFormat::Mp4, "MP4"));
+                    if mp4_button.clicked() { selected_format = ExportFormat::Mp4; }
+                    if !is_ffmpeg_installed { mp4_button.on_disabled_hover_text("Requires FFMPEG Add-On"); }
+
+                    let mkv_button = ui.add_enabled(is_ffmpeg_installed, egui::SelectableLabel::new(selected_format == ExportFormat::Mkv, "MKV"));
+                    if mkv_button.clicked() { selected_format = ExportFormat::Mkv; }
+                    if !is_ffmpeg_installed { mkv_button.on_disabled_hover_text("Requires FFMPEG Add-On"); }
+
+                    let webm_button = ui.add_enabled(is_ffmpeg_installed, egui::SelectableLabel::new(selected_format == ExportFormat::Webm, "WebM"));
+                    if webm_button.clicked() { selected_format = ExportFormat::Webm; }
+                    if !is_ffmpeg_installed { webm_button.on_disabled_hover_text("Requires FFMPEG Add-On"); }
+
+                    // ZIP
+                    ui.selectable_value(&mut selected_format, ExportFormat::Zip, "ZIP");
+                });
+
+                if selected_format != state.format {
+                    state.format = selected_format.clone();
+                    // SAVE PREFERENCE
+                    settings.animation.last_export_format = match selected_format {
+                        ExportFormat::Gif => 0,
+                        ExportFormat::WebP => 1,
+                        ExportFormat::Avif => 2,
+                        ExportFormat::Png => 3,
+                        ExportFormat::Mp4 => 4,
+                        ExportFormat::Mkv => 5,
+                        ExportFormat::Webm => 6,
+                        ExportFormat::Zip => 7,
                     };
-                    
+                }
+                ui.end_row();
+
+                // CHECK INSTALLED TOOLS
+                let is_ffmpeg_installed = toolpaths::ffmpeg_status() == Presence::Installed;
+                let is_avif_installed = toolpaths::avifenc_status() == Presence::Installed;
+
+                // QUALITY
+                let quality_tooltip = "Quality percentage dictates image quality, with lower quality correlating with lower file size";
+                let (is_quality_enabled, quality_reason) = match state.format {
+                    ExportFormat::WebP | ExportFormat::Gif | ExportFormat::Mp4 | ExportFormat::Mkv | ExportFormat::Webm =>
+                        (is_ffmpeg_installed, if !is_ffmpeg_installed { "Requires FFMPEG (Settings > Add-Ons)" } else { quality_tooltip }),
+                    ExportFormat::Avif =>
+                        (is_avif_installed, if !is_avif_installed { "Requires AVIFENC (Settings > Add-Ons)" } else { quality_tooltip }),
+                    _ => (false, "Not available for this File Type"),
+                };
+
+                if is_quality_enabled {
+                    ui.label("Quality").on_hover_text(quality_reason);
+                } else {
+                    ui.add_enabled(false, egui::Label::new("Quality")).on_disabled_hover_text(quality_reason);
+                }
+
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = EXPORT_MODE_SPACING;
                     if is_quality_enabled {
-                        ui.label("Quality").on_hover_text(quality_reason);
-                    } else {
-                        ui.add_enabled(false, egui::Label::new("Quality")).on_disabled_hover_text(quality_reason);
-                    }
-                    
-                    ui.horizontal(|ui| {
-                        ui.spacing_mut().item_spacing.x = EXPORT_MODE_SPACING;
-                        if is_quality_enabled {
-                            let hint = egui::RichText::new("100").color(egui::Color32::GRAY);
-                            if ui.add(egui::TextEdit::singleline(&mut state.quality_percent_str).hint_text(hint).desired_width(40.0)).on_hover_text(quality_reason).changed() {
-                                if state.quality_percent_str.trim().is_empty() {
-                                    state.quality_percent = 100;
-                                    settings.animation.last_export_quality = None;
-                                } else if let Ok(parsed_quality) = state.quality_percent_str.parse::<i32>() { 
-                                    state.quality_percent = parsed_quality.clamp(0, 100); 
-                                    settings.animation.last_export_quality = Some(state.quality_percent);
-                                }
+                        let hint = egui::RichText::new("100").color(egui::Color32::GRAY);
+                        if ui.add(egui::TextEdit::singleline(&mut state.quality_percent_str).hint_text(hint).desired_width(40.0)).on_hover_text(quality_reason).changed() {
+                            if state.quality_percent_str.trim().is_empty() {
+                                state.quality_percent = 100;
+                                settings.animation.last_export_quality = None;
+                            } else if let Ok(parsed_quality) = state.quality_percent_str.parse::<i32>() {
+                                state.quality_percent = parsed_quality.clamp(0, 100);
+                                settings.animation.last_export_quality = Some(state.quality_percent);
                             }
-                            ui.label("%").on_hover_text(quality_reason);
-                        } else {
-                            let mut not_applicable = "N/A".to_string();
-                            ui.add_enabled(false, egui::TextEdit::singleline(&mut not_applicable).desired_width(40.0)).on_disabled_hover_text(quality_reason);
                         }
-                    });
-                    ui.end_row();
+                        ui.label("%").on_hover_text(quality_reason);
+                    } else {
+                        let mut not_applicable = "N/A".to_string();
+                        ui.add_enabled(false, egui::TextEdit::singleline(&mut not_applicable).desired_width(40.0)).on_disabled_hover_text(quality_reason);
+                    }
+                });
+                ui.end_row();
 
-                    // COMPRESSION
-                    let compression_tooltip = "Compression percentage dictates file size, with higher compression correlating with slower encoding speeds";
-                    let (is_compression_enabled, compression_reason) = match state.format {
-                        ExportFormat::WebP | ExportFormat::Gif | ExportFormat::Mp4 | ExportFormat::Mkv | ExportFormat::Webm => 
-                            (is_ffmpeg_installed, if !is_ffmpeg_installed { "Requires FFMPEG (Settings > Add-Ons)" } else { compression_tooltip }),
-                        ExportFormat::Avif => 
-                            (is_avif_installed, if !is_avif_installed { "Requires AVIFENC (Settings > Add-Ons)" } else { compression_tooltip }),
-                        ExportFormat::Zip => (true, compression_tooltip),
-                        _ => (false, "Not available for this File Type"),
-                    };
+                // COMPRESSION
+                let compression_tooltip = "Compression percentage dictates file size, with higher compression correlating with slower encoding speeds";
+                let (is_compression_enabled, compression_reason) = match state.format {
+                    ExportFormat::WebP | ExportFormat::Gif | ExportFormat::Mp4 | ExportFormat::Mkv | ExportFormat::Webm =>
+                        (is_ffmpeg_installed, if !is_ffmpeg_installed { "Requires FFMPEG (Settings > Add-Ons)" } else { compression_tooltip }),
+                    ExportFormat::Avif =>
+                        (is_avif_installed, if !is_avif_installed { "Requires AVIFENC (Settings > Add-Ons)" } else { compression_tooltip }),
+                    ExportFormat::Zip => (true, compression_tooltip),
+                    _ => (false, "Not available for this File Type"),
+                };
 
+                if is_compression_enabled {
+                    ui.label("Compression").on_hover_text(compression_reason);
+                } else {
+                    ui.add_enabled(false, egui::Label::new("Compression")).on_disabled_hover_text(compression_reason);
+                }
+
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = EXPORT_MODE_SPACING;
                     if is_compression_enabled {
-                        ui.label("Compression").on_hover_text(compression_reason);
-                    } else {
-                        ui.add_enabled(false, egui::Label::new("Compression")).on_disabled_hover_text(compression_reason);
-                    }
-                    
-                    ui.horizontal(|ui| {
-                        ui.spacing_mut().item_spacing.x = EXPORT_MODE_SPACING;
-                        if is_compression_enabled {
-                            let hint = egui::RichText::new("0").color(egui::Color32::GRAY);
-                            if ui.add(egui::TextEdit::singleline(&mut state.compression_percent_str).hint_text(hint).desired_width(40.0)).on_hover_text(compression_reason).changed() {
-                                if state.compression_percent_str.trim().is_empty() {
-                                    state.compression_percent = 0;
-                                    settings.animation.last_export_compression = None;
-                                } else if let Ok(parsed_compression) = state.compression_percent_str.parse::<i32>() { 
-                                    state.compression_percent = parsed_compression.clamp(0, 100); 
-                                    settings.animation.last_export_compression = Some(state.compression_percent);
-                                }
+                        let hint = egui::RichText::new("0").color(egui::Color32::GRAY);
+                        if ui.add(egui::TextEdit::singleline(&mut state.compression_percent_str).hint_text(hint).desired_width(40.0)).on_hover_text(compression_reason).changed() {
+                            if state.compression_percent_str.trim().is_empty() {
+                                state.compression_percent = 0;
+                                settings.animation.last_export_compression = None;
+                            } else if let Ok(parsed_compression) = state.compression_percent_str.parse::<i32>() {
+                                state.compression_percent = parsed_compression.clamp(0, 100);
+                                settings.animation.last_export_compression = Some(state.compression_percent);
                             }
-                            ui.label("%").on_hover_text(compression_reason); 
-                        } else {
-                            let mut not_applicable = "N/A".to_string();
-                            ui.add_enabled(false, egui::TextEdit::singleline(&mut not_applicable).desired_width(40.0)).on_disabled_hover_text(compression_reason);
                         }
-                    });
-                    ui.end_row();
+                        ui.label("%").on_hover_text(compression_reason);
+                    } else {
+                        let mut not_applicable = "N/A".to_string();
+                        ui.add_enabled(false, egui::TextEdit::singleline(&mut not_applicable).desired_width(40.0)).on_disabled_hover_text(compression_reason);
+                    }
+                });
+                ui.end_row();
             });
-            
+
             // BACKGROUND LOGIC
-            ui.horizontal(|ui| { 
+            ui.horizontal(|ui| {
                 let is_forced_opaque = matches!(state.format, ExportFormat::Mp4 | ExportFormat::Mkv | ExportFormat::Webm);
-                
+
                 if is_forced_opaque {
                     if !state.background { state.background = true; }
                     let mut dummy_toggle = true;
@@ -741,10 +772,10 @@ fn render_content(
                         state.background = false;
                     }
                 }
-                
-                ui.label("Background").on_hover_text("Adds a gray background to the image"); 
+
+                ui.label("Background").on_hover_text("Adds a gray background to the image");
             });
-            
+
         });
 
         ui.add_space(20.0);
@@ -767,7 +798,7 @@ fn render_content(
                     ui.label(egui::RichText::new(ffmpeg_text).color(egui::Color32::WHITE).strong());
                 });
             }).response;
-            
+
         if !is_ffmpeg_installed {
             ffmpeg_response.on_hover_text("Download at Settings > Add-Ons > FFMPEG");
         }
@@ -777,7 +808,7 @@ fn render_content(
         let is_avif_installed = toolpaths::avifenc_status() == Presence::Installed;
         let avif_text = if is_avif_installed { "AVIFENC Installed" } else { "AVIFENC Missing" };
         let avif_color = if is_avif_installed { egui::Color32::from_rgb(40, 160, 40) } else { egui::Color32::from_rgb(180, 50, 50) };
-        
+
         let avif_response = egui::Frame::none()
             .fill(avif_color)
             .rounding(egui::Rounding::same(5.0))
@@ -787,19 +818,19 @@ fn render_content(
                     ui.label(egui::RichText::new(avif_text).color(egui::Color32::WHITE).strong());
                 });
             }).response;
-            
+
         if !is_avif_installed {
             avif_response.on_hover_text("Download at Settings > Add-Ons > AVIFENC");
         }
-        
+
         ui.add_space(5.0);
 
     });
 
     ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
-        ui.add_space(5.0); 
-        
-        let frame_count = (state.frame_end - state.frame_start).abs() + 1;        
+        ui.add_space(5.0);
+
+        let frame_count = (state.frame_end - state.frame_start).abs() + 1;
         let (progress_value, label_text) = if state.is_loop_searching {
             let search_start = state.loop_search_start_time.unwrap_or(0.0);
             let animation_progress = ((ui.input(|input| input.time) - search_start) % 1.0) as f32;
@@ -817,7 +848,7 @@ fn render_content(
         } else {
             let is_loop_terminated = state.loop_result_msg.as_ref().map(|message| message.contains("Terminated") || message.contains("Aborted")).unwrap_or(false);
             let is_export_terminated = state.export_result_msg.as_ref().map(|message| message.contains("Terminated") || message.contains("Aborted")).unwrap_or(false);
-            
+
             if is_loop_terminated || is_export_terminated {
                 (1.0, "Ready".to_string())
             } else {
@@ -826,39 +857,39 @@ fn render_content(
                         let is_focused = ui.input(|input| input.focused);
                         let seen_id = egui::Id::new("export_done_seen");
                         let mut has_seen = ui.ctx().data(|data_store| data_store.get_temp(seen_id).unwrap_or(false));
-    
+
                         if is_focused && !has_seen {
                             has_seen = true;
                             ui.ctx().data_mut(|data_store| data_store.insert_temp(seen_id, true));
                         }
-    
+
                         let label = state.loop_result_msg.clone().unwrap_or_else(|| "Done".to_string());
-    
+
                         if !has_seen && !is_focused {
                             state.completion_time = Some(ui.input(|input| input.time));
-                            ui.ctx().request_repaint(); 
+                            ui.ctx().request_repaint();
                             (1.0, label)
                         } else {
                             let elapsed = ui.input(|input| input.time) - done_time;
-                            if elapsed < 3.0 { 
-                                ui.ctx().request_repaint(); 
-                                (1.0, label) 
-                            } 
-                            else { 
-                                state.completion_time = None; 
+                            if elapsed < 3.0 {
+                                ui.ctx().request_repaint();
+                                (1.0, label)
+                            }
+                            else {
+                                state.completion_time = None;
                                 state.loop_result_msg = None;
                                 state.export_result_msg = None;
-                                (1.0, "Ready".to_string()) 
+                                (1.0, "Ready".to_string())
                             }
                         }
                     },
                     None => {
                         let ratio = if frame_count == 0 { 0.0 } else { (state.current_progress as f32 / frame_count as f32).min(1.0) };
-                        if ratio > 0.0 && ratio < 1.0 { 
-                             let percent = (ratio * 100.0) as i32;
-                            (ratio, format!("Paused | {}f/{}f ({}%)", state.current_progress, frame_count, percent)) 
-                        } else { 
-                            (1.0, "Ready".to_string()) 
+                        if ratio > 0.0 && ratio < 1.0 {
+                            let percent = (ratio * 100.0) as i32;
+                            (ratio, format!("Paused | {}f/{}f ({}%)", state.current_progress, frame_count, percent))
+                        } else {
+                            (1.0, "Ready".to_string())
                         }
                     }
                 }
@@ -867,29 +898,29 @@ fn render_content(
 
         ui.add(egui::ProgressBar::new(progress_value));
         ui.label(label_text);
-        
-        ui.add_space(5.0); 
-        
-        if state.is_processing {
-             let abort_button = egui::Button::new("Abort Export").fill(egui::Color32::from_rgb(180, 50, 50));
-             if ui.add_sized(egui::vec2(ui.available_width(), 30.0), abort_button).clicked() {
-                 if let Some(abort_signal) = &state.abort {
-                     abort_signal.store(true, Ordering::Relaxed);
-                 }
-                 
-                 state.export_result_msg = Some("Export Terminated!".to_string());
-                 state.completion_time = Some(ui.input(|input| input.time));
 
-                 state.is_processing = false; 
-                 state.current_progress = 0; 
-                 state.encoded_frames = 0;
-             }
+        ui.add_space(5.0);
+
+        if state.is_processing {
+            let abort_button = egui::Button::new("Abort Export").fill(egui::Color32::from_rgb(180, 50, 50));
+            if ui.add_sized(egui::vec2(ui.available_width(), 30.0), abort_button).clicked() {
+                if let Some(abort_signal) = &state.abort {
+                    abort_signal.store(true, Ordering::Relaxed);
+                }
+
+                state.export_result_msg = Some("Export Terminated!".to_string());
+                state.completion_time = Some(ui.input(|input| input.time));
+
+                state.is_processing = false;
+                state.current_progress = 0;
+                state.encoded_frames = 0;
+            }
         } else {
             let is_valid = state.region_w > 0.1 && state.region_h > 0.1;
             let is_enabled = !state.is_loop_searching && is_valid;
-            
+
             let mut is_export_terminated = false;
-             if let Some(message) = &state.export_result_msg {
+            if let Some(message) = &state.export_result_msg {
                 if message.contains("Terminated") || message.contains("Aborted") {
                     if let Some(done_time) = state.completion_time {
                         if ui.input(|input| input.time) - done_time < 3.0 {
@@ -898,7 +929,7 @@ fn render_content(
                     }
                 }
             }
-            
+
             let mut trigger_export = || {
                 start_export(state);
                 state.export_result_msg = None;
@@ -907,7 +938,7 @@ fn render_content(
 
             if is_export_terminated {
                 let terminated_button = egui::Button::new("Export Terminated!").fill(egui::Color32::from_rgb(180, 50, 50));
-                
+
                 if ui.add_enabled_ui(is_enabled, |ui| {
                     ui.add_sized(egui::vec2(ui.available_width(), 30.0), terminated_button)
                 }).inner.clicked() {
@@ -917,12 +948,12 @@ fn render_content(
                 let button_text = if is_valid { "Begin Export" } else { "No Camera Set" };
                 if ui.add_enabled_ui(is_enabled, |ui| {
                     ui.add_sized(egui::vec2(ui.available_width(), 30.0), egui::Button::new(button_text))
-                }).inner.clicked() { 
+                }).inner.clicked() {
                     trigger_export();
                 }
             }
         }
-        
-        ui.add_space(5.0); ui.separator(); 
+
+        ui.add_space(5.0); ui.separator();
     });
 }

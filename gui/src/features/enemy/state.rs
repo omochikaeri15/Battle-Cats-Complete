@@ -17,7 +17,7 @@ use crate::features::enemy::filter::EnemyFilterState;
 use crate::global::sheet::GuiSpriteSheet;
 
 // We now import Rig instead of Model
-use nyanko::animation::build::Rig;
+use nyanko::animation::engine::Unit;
 
 pub const TOP_PANEL_PADDING: f32 = 2.5;
 pub const SEARCH_FILTER_GAP: f32 = 5.0;
@@ -41,7 +41,7 @@ pub struct EnemyListState {
     #[serde(skip)] pub img015_sheets: Vec<GuiSpriteSheet>,
 
     // NEW: Replaces old Model and SpriteSheet with the unified pure Rig
-    #[serde(skip)] pub rig: Option<Arc<Rig>>,
+    #[serde(skip)] pub rig: Option<Arc<Unit>>,
 }
 
 pub fn show(ctx: &egui::Context, state: &mut EnemyListState, settings: &mut Settings, param: &Param, drag_guard: &mut DragGuard) {

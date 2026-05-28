@@ -12,7 +12,7 @@ use core::settings::logic::Settings;
 use core::global::game::param::Param;
 
 // We now import Rig instead of Model
-use nyanko::animation::build::Rig;
+use nyanko::animation::engine::Unit;
 
 use crate::features::cat::list::CatList;
 use crate::features::animation::viewer::AnimViewer;
@@ -44,7 +44,7 @@ pub struct CatListState {
     #[serde(skip)] pub texture_cache_version: u64,
 
     // NEW: Replaces old Model and SpriteSheet with the unified pure Rig
-    #[serde(skip)] pub rig: Option<Arc<Rig>>,
+    #[serde(skip)] pub rig: Option<Arc<Unit>>,
 }
 
 pub fn show(ctx: &egui::Context, state: &mut CatListState, settings: &mut Settings, param: &Param, drag_guard: &mut DragGuard) {

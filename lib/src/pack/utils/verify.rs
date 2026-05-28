@@ -1,4 +1,4 @@
-pub(crate) fn is_valid(data: &[u8], filename: &str) -> bool {
+pub fn is_valid(data: &[u8], filename: &str) -> bool {
     let lower_name = filename.to_lowercase();
     if lower_name.ends_with(".png") {
         return data.len() >= 4 && data.starts_with(&[0x89, 0x50, 0x4E, 0x47]);

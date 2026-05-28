@@ -8,9 +8,8 @@ use image::RgbaImage;
 use webp_animation::Encoder as WebpEncoder;
 use gif::{Encoder as GifEncoder, Frame as GifFrame, Repeat as GifRepeat, DisposalMethod};
 
-use crate::animation::logic::canvas::GlowRenderer;
-use crate::global::formats::imgcut::SpriteSheet;
-use crate::animation::logic::transform::WorldTransform;
+// STRICT BOUNDARY: Importing exclusively from the public engine API
+use nyanko::animation::engine::{Unit, Anim, GlowRenderer};
 
 // SHARED DATA STRUCTURES
 #[derive(Clone, Debug)]
@@ -79,9 +78,9 @@ pub fn encode_native(
                 if abort_signal.load(Ordering::Relaxed) { return false; }
 
                 match message {
-                    EncoderMessage::Frame(raw_pixels, width, height, delay_ms) => {
+                    EncoderMessage::Frame(raw_pixels, width, height, delay_milliseconds) => {
                         let image_data = prepare_image(raw_pixels, width, height, config.background);
-                        let mut frame_ticks = (delay_ms as f32 / 10.0).round() as u16;
+                        let mut frame_ticks = (delay_milliseconds as f32 / 10.0).round() as u16;
                         if frame_ticks < 2 { frame_ticks = 2; }
 
                         let mut pixel_buffer = image_data.into_vec();
@@ -109,16 +108,16 @@ pub fn encode_native(
         },
         ExportFormat::WebP => {
             let Ok(mut webp_encoder) = WebpEncoder::new((config.width, config.height)) else { return false; };
-            let mut timestamp_ms = 0;
+            let mut timestamp_milliseconds = 0;
 
             while let Ok(message) = receiver.recv() {
                 if abort_signal.load(Ordering::Relaxed) { return false; }
 
                 match message {
-                    EncoderMessage::Frame(raw_pixels, width, height, delay_ms) => {
+                    EncoderMessage::Frame(raw_pixels, width, height, delay_milliseconds) => {
                         let image_data = prepare_image(raw_pixels, width, height, config.background);
-                        let _ = webp_encoder.add_frame(&image_data.into_vec(), timestamp_ms);
-                        timestamp_ms += delay_ms as i32;
+                        let _ = webp_encoder.add_frame(&image_data.into_vec(), timestamp_milliseconds);
+                        timestamp_milliseconds += delay_milliseconds as i32;
                         frames_processed += 1;
                         let _ = status_sender.send(EncoderStatus::Progress(frames_processed));
                     },
@@ -127,7 +126,7 @@ pub fn encode_native(
             }
 
             if is_success && !abort_signal.load(Ordering::Relaxed) {
-                let Ok(final_data) = webp_encoder.finalize(timestamp_ms) else { return false; };
+                let Ok(final_data) = webp_encoder.finalize(timestamp_milliseconds) else { return false; };
                 is_success = fs::write(temp_path, final_data).is_ok();
             } else {
                 is_success = false;
@@ -179,26 +178,31 @@ pub fn encode_native(
     is_success
 }
 
-// Replaced egui types with standard primitives to keep logic pure
+// Strictly requiring an explicit Unit and Anim. No Option, no Interpolate.
 pub fn render_frame(
     renderer: &mut GlowRenderer,
     gl_context: &glow::Context,
     width: u32,
     height: u32,
-    parts: &[WorldTransform],
-    sheet: &SpriteSheet,
+    unit: &Unit,
+    animation: Option<&Anim>,
+    frame_time: f32,
     pan_x: f32,
     pan_y: f32,
     zoom: f32,
     background_color: [u8; 4],
-) -> Vec<u8> {
+) -> Result<Vec<u8>, String> {
     unsafe {
         gl_context.disable(glow::SCISSOR_TEST);
 
-        let framebuffer = gl_context.create_framebuffer().expect("Failed to create OpenGL framebuffer");
+        let framebuffer = gl_context.create_framebuffer()
+            .map_err(|error| format!("Failed to create OpenGL framebuffer: {}", error))?;
+
         gl_context.bind_framebuffer(glow::FRAMEBUFFER, Some(framebuffer));
 
-        let texture = gl_context.create_texture().expect("Failed to create OpenGL texture");
+        let texture = gl_context.create_texture()
+            .map_err(|error| format!("Failed to create OpenGL texture: {}", error))?;
+
         gl_context.bind_texture(glow::TEXTURE_2D, Some(texture));
         gl_context.tex_image_2d(glow::TEXTURE_2D, 0, glow::RGBA as i32, width as i32, height as i32, 0, glow::RGBA, glow::UNSIGNED_BYTE, None);
         gl_context.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_MIN_FILTER, glow::LINEAR as i32);
@@ -214,20 +218,22 @@ pub fn render_frame(
             background_color[2] as f32 / 255.0,
             background_color[3] as f32 / 255.0
         );
+
         gl_context.clear_color(red, green, blue, alpha);
         gl_context.clear(glow::COLOR_BUFFER_BIT);
 
-        // Use the updated GlowRenderer::paint signature from canvas.rs
-        renderer.paint(
+        // DELGATE RENDER COMPLETELY TO ENGINE
+        let _ = nyanko::animation::engine::frame(
+            renderer,
             gl_context,
+            unit,
+            animation,
+            frame_time,
             width as f32,
             height as f32,
-            parts,
-            sheet,
             pan_x,
             pan_y,
-            zoom,
-            true
+            zoom
         );
 
         gl_context.pixel_store_i32(glow::PACK_ALIGNMENT, 1);
@@ -242,7 +248,7 @@ pub fn render_frame(
         gl_context.enable(glow::SCISSOR_TEST);
         gl_context.pixel_store_i32(glow::PACK_ALIGNMENT, 4);
 
-        pixel_buffer
+        Ok(pixel_buffer)
     }
 }
 

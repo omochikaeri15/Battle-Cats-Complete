@@ -3,16 +3,26 @@ use crate::common::data::imgcut::SpriteSheet;
 use super::transform::WorldTransform;
 use std::sync::Arc;
 
+/// Represents an error encountered during the initialization or execution of the OpenGL rendering pipeline.
 #[derive(Debug)]
 pub enum CanvasError {
+    /// Failed to create the main shader program object.
     ProgramCreation,
+    /// Failed to allocate or initialize the vertex shader.
     VertexShaderCreation,
+    /// Failed to allocate or initialize the fragment shader.
     FragmentShaderCreation,
+    /// Failed to compile the shader source code. Contains the OpenGL compilation log.
     ShaderCompile(String),
+    /// Failed to link the compiled shaders into the final program. Contains the OpenGL linker log.
     ProgramLink(String),
+    /// Failed to generate a Vertex Array Object (VAO).
     VaoCreation,
+    /// Failed to generate the Vertex Buffer Object (VBO) for positional data.
     VboCreation,
+    /// Failed to generate the Texture Buffer Object (TBO) for UV mapping data.
     TboCreation,
+    /// Failed to generate a texture object.
     TextureAllocation,
 }
 
@@ -26,9 +36,9 @@ uniform mat3 u_transform;
 out vec2 v_texcoord;
 
 void main() {
-    vec3 pos = u_transform * vec3(a_position, 1.0);
-    gl_Position = vec4(pos.xy, 0.0, 1.0);
-    v_texcoord = a_texcoord;
+vec3 pos = u_transform * vec3(a_position, 1.0);
+gl_Position = vec4(pos.xy, 0.0, 1.0);
+v_texcoord = a_texcoord;
 }
 "#;
 
@@ -43,27 +53,38 @@ in vec2 v_texcoord;
 out vec4 f_color;
 
 void main() {
-    vec4 tex_color = texture(u_texture, v_texcoord);
+vec4 tex_color = texture(u_texture, v_texcoord);
 
-    if (u_is_glow == 1) {
-        float brightness = max(tex_color.r, max(tex_color.g, tex_color.b));
-        f_color = vec4(tex_color.rgb, brightness) * u_opacity;
-    } else {
-        f_color = tex_color * u_opacity;
-    }
+if (u_is_glow == 1) {
+float brightness = max(tex_color.r, max(tex_color.g, tex_color.b));
+f_color = vec4(tex_color.rgb, brightness) * u_opacity;
+} else {
+f_color = tex_color * u_opacity;
+}
 }
 "#;
 
+/// An OpenGL-based hardware-accelerated rendering pipeline.
+///
+/// This struct manages the active OpenGL state, including buffers, shader programs,
+/// and texture handles required to draw the calculated geometry.
 pub struct GlowRenderer {
     program: glow::Program,
     vertex_array: glow::VertexArray,
     vbo: glow::Buffer,
     tbo: glow::Buffer,
     texture: Option<glow::Texture>,
-    last_image_id: usize, // We now track the raw memory address pointer ID!
+    last_image_id: usize,
 }
 
 impl GlowRenderer {
+    /// Initializes a new rendering pipeline and allocates required OpenGL buffers and shader programs.
+    ///
+    /// # Arguments
+    /// * `gl_context` - A reference to the active OpenGL context.
+    ///
+    /// # Returns
+    /// A `Result` containing the initialized `GlowRenderer`, or a `CanvasError` if OpenGL buffer or shader allocation fails.
     pub fn new(gl_context: &glow::Context) -> Result<Self, CanvasError> {
         unsafe {
             let program = compile_program(gl_context, VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE)?;
@@ -102,7 +123,6 @@ impl GlowRenderer {
                 return Ok(());
             };
 
-            // Cast the Arc pointer to a usize ID to check if it's the exact same image in memory
             let current_image_id = Arc::as_ptr(image) as usize;
 
             if self.last_image_id == current_image_id && self.texture.is_some() {
@@ -162,7 +182,7 @@ impl GlowRenderer {
             );
 
             self.texture = Some(texture_id);
-            self.last_image_id = current_image_id; // Update our tracker!
+            self.last_image_id = current_image_id;
 
             Ok(())
         }

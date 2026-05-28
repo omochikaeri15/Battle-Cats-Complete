@@ -1,48 +1,56 @@
 use eframe::egui;
 use std::sync::{Arc, Mutex};
-use core::animation::logic::canvas::GlowRenderer;
-use core::animation::logic::transform::WorldTransform;
-use crate::global::sheet::GuiSpriteSheet;
+
+// STRICT BOUNDARY: Only import the public engine API
+use nyanko::animation::engine::{Unit, Anim, GlowRenderer, frame};
 
 pub fn paint(
     ui: &mut egui::Ui,
     rect: egui::Rect,
-    renderer_ref: Arc<Mutex<Option<GlowRenderer>>>,
-    sheet: Arc<GuiSpriteSheet>,
-    parts: Vec<WorldTransform>,
+    renderer_reference: Arc<Mutex<Option<GlowRenderer>>>,
+    unit: Arc<Unit>,
+    animation: Option<Arc<Anim>>,
+    current_frame: f32,
     pan: egui::Vec2,
     zoom: f32,
-    allow_update: bool
 ) {
-    let callback = egui::PaintCallback {
+    let paint_callback = egui::PaintCallback {
         rect,
         callback: Arc::new(eframe::egui_glow::CallbackFn::new(move |info, painter| {
-            let Ok(mut renderer_lock) = renderer_ref.lock() else { return; };
+            let Ok(mut renderer_lock) = renderer_reference.lock() else {
+                return;
+            };
 
             if renderer_lock.is_none() {
-                *renderer_lock = Some(GlowRenderer::new(&**painter.gl()));
+                // Safely handle the Result without unwrapping/panicking
+                let Ok(new_renderer) = GlowRenderer::new(&**painter.gl()) else {
+                    return;
+                };
+                *renderer_lock = Some(new_renderer);
             }
 
-            let Some(renderer) = renderer_lock.as_mut() else { return; };
+            let Some(renderer) = renderer_lock.as_mut() else {
+                return;
+            };
 
             let viewport_width = info.viewport.width();
             let viewport_height = info.viewport.height();
-            let pan_x = pan.x;
-            let pan_y = pan.y;
 
-            renderer.paint(
+            // Delegate purely to the Nyanko engine's unified pipeline
+            let _ = frame(
+                renderer,
                 &**painter.gl(),
+                &unit,
+                animation.as_deref(), // Converts Option<Arc<Anim>> to Option<&Anim>
+                current_frame,
                 viewport_width,
                 viewport_height,
-                &parts,
-                &sheet.core,
-                pan_x,
-                pan_y,
-                zoom,
-                allow_update
+                pan.x,
+                pan.y,
+                zoom
             );
         })),
     };
 
-    ui.painter().add(callback);
+    ui.painter().add(paint_callback);
 }

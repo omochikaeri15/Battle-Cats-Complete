@@ -4,11 +4,11 @@ use std::cell::RefCell;
 use std::sync::Arc;
 
 use core::cat::logic::scanner::CatEntry;
-use nyanko::animation::build::Rig;
+use nyanko::animation::engine::Unit;
 use crate::features::animation::viewer::AnimViewer;
 use core::settings::logic::state::Settings;
 use core::cat::paths::{self, AnimType};
-use core::animation::logic::constants::{IDX_WALK, IDX_IDLE, IDX_ATTACK, IDX_KB, IDX_BURROW, IDX_SURFACE};
+use core::animation::constants::{IDX_WALK, IDX_IDLE, IDX_ATTACK, IDX_KB, IDX_BURROW, IDX_SURFACE};
 use crate::global::shared::DragGuard;
 
 thread_local! {
@@ -21,7 +21,7 @@ pub fn show(
     cat_entry: &CatEntry,
     current_form: usize,
     anim_viewer: &mut AnimViewer,
-    rig_sync: &mut Option<Arc<Rig>>, // Waiter Pattern Bridge
+    unit_sync: &mut Option<Arc<Unit>>, // Waiter Pattern Bridge
     settings: &mut Settings,
     drag_guard: &mut DragGuard,
 ) {
@@ -62,7 +62,7 @@ pub fn show(
             })();
 
             // Secondary logic remained identical, omitting for brevity in block
-            let mut secondary_assets = None;
+            let secondary_assets = None;
             let secondary_id = String::new();
 
             c.0 = primary_id.clone();
@@ -72,6 +72,6 @@ pub fn show(
             c.4 = secondary_assets;
         }
 
-        anim_viewer.show(ui, ctx, &c.0, &c.1, &c.2, c.3.clone(), c.4.clone(), rig_sync, settings, drag_guard);
+        anim_viewer.show(ui, ctx, &c.0, &c.1, &c.2, c.3.clone(), c.4.clone(), unit_sync, settings, drag_guard);
     });
 }
