@@ -1,15 +1,13 @@
 use eframe::egui;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use core::cat::data::skillacquisition::{TalentRaw, TalentGroupRaw};
 use crate::global::sheet::GuiSpriteSheet;
 use core::global::utils::autocrop;
 use core::settings::logic::Settings;
-use core::cat::data::unitid::CatRaw;
-use core::cat::data::unitlevel::CatLevelCurve;
+use nyanko::cat::unit::{Battle, LevelCurve};
 use core::cat::logic::talents;
 use core::cat::paths;
-use core::cat::data::skilllevel::TalentCost;
+use nyanko::cat::unit::{TalentCost,Talent, TalentGroup};
 use crate::global::shared::render_fallback_icon;
 use crate::global::assets::CustomAssets;
 
@@ -20,14 +18,14 @@ pub const TALENT_SECTION_SPACING: f32 = 2.0;
 
 pub fn render(
     ui: &mut egui::Ui,
-    talent_data: &TalentRaw,
+    talent_data: &Talent,
     sheets: &[GuiSpriteSheet],
     img022_sheets: &[GuiSpriteSheet],
     name_cache: &mut HashMap<String, egui::TextureHandle>,
     descriptions: Option<&Vec<String>>,
     settings: &Settings, 
-    current_stats: Option<&CatRaw>, 
-    curve: Option<&CatLevelCurve>,
+    current_stats: Option<&Battle>,
+    curve: Option<&LevelCurve>,
     unit_level: i32,
     talent_levels: &mut HashMap<u8, u8>, 
     cat_id: u32,                         
@@ -72,14 +70,14 @@ fn render_talent_group(
     ui: &mut egui::Ui,
     cat_id: u32,
     index: usize,
-    group: &TalentGroupRaw,
+    group: &TalentGroup,
     sheets: &[GuiSpriteSheet],
     img022_sheets: &[GuiSpriteSheet],
     name_cache: &mut HashMap<String, egui::TextureHandle>,
     descriptions: Option<&Vec<String>>,
     settings: &Settings,
-    current_stats: Option<&CatRaw>,
-    curve: Option<&CatLevelCurve>,
+    current_stats: Option<&Battle>,
+    curve: Option<&LevelCurve>,
     unit_level: i32,
     talent_levels: &mut HashMap<u8, u8>,
     sidebar_pad: f32,
@@ -132,7 +130,7 @@ fn render_talent_group(
 
 fn render_header(
     ui: &mut egui::Ui,
-    group: &TalentGroupRaw,
+    group: &TalentGroup,
     sheets: &[GuiSpriteSheet],
     name_cache: &mut HashMap<String, egui::TextureHandle>,
     settings: &Settings,
@@ -218,11 +216,11 @@ fn render_header(
 fn render_body(
     ui: &mut egui::Ui,
     index: usize,
-    group: &TalentGroupRaw,
+    group: &TalentGroup,
     descriptions: Option<&Vec<String>>,
     talent_levels: &mut HashMap<u8, u8>,
-    current_stats: Option<&CatRaw>,
-    curve: Option<&CatLevelCurve>,
+    current_stats: Option<&Battle>,
+    curve: Option<&LevelCurve>,
     unit_level: i32,
     talent_costs: &HashMap<u8, TalentCost>,
     img022_sheets: &[GuiSpriteSheet],
@@ -338,7 +336,7 @@ fn render_body(
 
 fn get_or_load_skill_name(
     ui: &mut egui::Ui,
-    group: &TalentGroupRaw,
+    group: &TalentGroup,
     settings: &Settings,
     name_cache: &mut HashMap<String, egui::TextureHandle>
 ) -> Option<egui::TextureHandle> {

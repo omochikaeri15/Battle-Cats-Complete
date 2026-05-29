@@ -2,20 +2,14 @@ use std::path::{Path, PathBuf};
 use std::fs;
 use std::thread;
 use std::sync::{Arc, mpsc::{self, Receiver}};
-use std::sync::Mutex; 
+use std::sync::Mutex;
+use std::collections::HashMap;
 use rayon::prelude::*;
 use std::io::Read;
 use serde::{Serialize, Deserialize};
 
-use crate::cat::data::unitid::CatRaw;
-use crate::cat::data::unitbuy::{self, UnitBuyRow};
-use crate::cat::data::unitlevel::{self, CatLevelCurve};
-use crate::cat::data::skillacquisition::{self, TalentRaw};
-use crate::cat::data::unitevolve;
-use crate::cat::data::unitexplanation;
-use crate::cat::data::skilllevel;
-use crate::cat::data::skilldescriptions;
-use crate::global::utils; 
+use nyanko::cat::unit::{Battle, UnitBuy, LevelCurve, TalentCost, Talent, UnitEvolve};
+use crate::cat::data::{unitbuy, unitlevel, unitevolve, unitexplanation, skilllevel, skilldescriptions, skillacquisition};
 use crate::cat::paths;
 use crate::settings::logic::state::ScannerConfig;
 use crate::global::formats::maanim::Animation;
@@ -28,14 +22,14 @@ pub struct CatEntry {
     pub names: Vec<String>,
     pub description: Vec<Vec<String>>,
     pub forms: [bool; 4],
-    pub stats: Vec<Option<CatRaw>>,
-    pub curve: Option<CatLevelCurve>,
+    pub stats: Vec<Option<Battle>>,
+    pub curve: Option<LevelCurve>,
     pub atk_anim_frames: [i32; 4], 
     pub egg_ids: (i32, i32),
-    pub talent_data: Option<TalentRaw>,
-    pub unit_buy: UnitBuyRow,
-    pub evolve_text: [Vec<String>; 4], 
-    #[serde(skip)] pub talent_costs: Arc<std::collections::HashMap<u8, skilllevel::TalentCost>>,
+    pub talent_data: Option<Talent>,
+    pub unitbuy: UnitBuy,
+    pub evolve_text: UnitEvolve,
+    #[serde(skip)] pub talent_costs: Arc<HashMap<u8, TalentCost>>,
     #[serde(skip)] pub skill_descriptions: Arc<Vec<String>>,
 }
 
@@ -145,11 +139,11 @@ pub fn scan_single(id: u32, config: &ScannerConfig) -> Option<CatEntry> {
 
 pub fn process_cat_entry(
     original_folder_path: &Path, 
-    level_curves: &[CatLevelCurve], 
-    unit_buys: &std::collections::HashMap<u32, UnitBuyRow>,
-    talents_map: &std::collections::HashMap<u16, TalentRaw>, 
-    evolve_text_map: &std::collections::HashMap<u32, [Vec<String>; 4]>, 
-    talent_costs: &Arc<std::collections::HashMap<u8, skilllevel::TalentCost>>,
+    level_curves: &[LevelCurve],
+    unit_buys: &std::collections::HashMap<u32, UnitBuy>,
+    talents_map: &std::collections::HashMap<u16, Talent>,
+    evolve_text_map: &std::collections::HashMap<u32, UnitEvolve>,
+    talent_costs: &Arc<std::collections::HashMap<u8, TalentCost>>,
     skill_descriptions: &Arc<Vec<String>>,
     config: &ScannerConfig
 ) -> Option<CatEntry> {
@@ -252,42 +246,25 @@ pub fn process_cat_entry(
             }
         }
     }
-    
+
     let mut cat_stats = vec![None; 4];
     if let Some(resolved) = resolved_stats {
-        if let Ok(bytes) = fs::read(resolved) {
-            let file_content = String::from_utf8_lossy(&bytes);
-            let delimiter = utils::detect_csv_separator(&file_content);
-            for (line_index, csv_line) in file_content.lines().enumerate().take(4) {
-                cat_stats[line_index] = CatRaw::from_csv_line(csv_line, delimiter);
-            }
-        }
-    }
+        if let Ok(bytes) = fs::read(&resolved) {
 
-    let mut cat_names = vec![String::new(); 4];
-    let mut cat_descriptions = vec![Vec::new(); 4];
-    
-    let lang_directory = paths::lang(cats_root_dir, cat_id);
-    let base_filename = format!("Unit_Explanation{}.csv", cat_id + 1);
-    
-    let mut search_dirs = vec![original_folder_path.to_path_buf()];
-    if lang_directory.exists() { search_dirs.insert(0, lang_directory); }
-
-    for dir in search_dirs {
-        let resolved_paths = crate::global::resolver::get(&dir, &[base_filename.as_str()], priority);
-        for name_file_path in resolved_paths {
-            if let Some(explanation) = unitexplanation::UnitExplanation::load(&name_file_path) {
-                for i in 0..4 {
-                    if !forms_existence[i] || !cat_names[i].is_empty() { continue; }
-                    let name = explanation.names.get(i).cloned().unwrap_or_default();
-                    if name.is_empty() { continue; }
-                    cat_names[i] = name;
-                    cat_descriptions[i] = explanation.descriptions.get(i).cloned().unwrap_or_default();
+            // THE WAITER HAND-OFF: Pass raw bytes to the pure nyanko engine
+            if let Ok(parsed_profiles) = Battle::parse(&bytes) {
+                for (line_index, profile) in parsed_profiles.into_iter().enumerate().take(4) {
+                    cat_stats[line_index] = Some(profile);
                 }
+            } else if config.show_invalid_cats {
             }
+
         }
-        if (0..4).any(|i| forms_existence[i] && !cat_names[i].is_empty()) { break; }
     }
+
+    let explanation = unitexplanation::load(cat_id, original_folder_path, priority);
+    let cat_names = explanation.names.to_vec();
+    let cat_descriptions = explanation.descriptions.to_vec();
     
     Some(CatEntry { 
         id: cat_id, 
@@ -300,9 +277,9 @@ pub fn process_cat_entry(
         curve: level_curves.get(cat_id as usize).cloned(), 
         atk_anim_frames: attack_anim_frames,
         egg_ids, 
-        talent_data: talents_map.get(&(cat_id as u16)).cloned(), 
-        unit_buy: ub_row.clone(), 
-        evolve_text: evolve_text_map.get(&cat_id).cloned().unwrap_or_default(),
+        talent_data: talents_map.get(&(cat_id as u16)).cloned(),
+        unitbuy: ub_row.clone(),
+        evolve_text: evolve_text_map.get(&(cat_id as u32)).cloned().unwrap_or_default(),
         talent_costs: Arc::clone(talent_costs),
         skill_descriptions: Arc::clone(skill_descriptions),
     })

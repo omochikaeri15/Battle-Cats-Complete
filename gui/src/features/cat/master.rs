@@ -7,7 +7,7 @@ use crate::global::sheet::GuiSpriteSheet;
 use nyanko::animation::engine::Unit; // Add Rig import
 use core::settings::logic::Settings;
 use crate::features::animation::viewer::AnimViewer;
-use core::cat::data::skilllevel::TalentCost;
+use nyanko::cat::unit::TalentCost;
 use crate::global::assets::CustomAssets;
 use crate::features::statblock::builder::{generate_and_copy, generate_and_save};
 use super::{header, stats, abilities, talents, details, viewer};
@@ -30,7 +30,7 @@ pub fn show(
     current_key: &mut String,
     img015_sheets: &mut Vec<GuiSpriteSheet>,
     img022_sheets: &mut Vec<GuiSpriteSheet>,
-    unit_sync: &mut Option<Arc<Unit>>, // Swapped Model/Sheet for Rig
+    unit_sync: &mut Option<Arc<Unit>>,
     anim_viewer: &mut AnimViewer,
     talent_name_cache: &mut HashMap<String, egui::TextureHandle>,
     gatya_item_textures: &mut HashMap<i32, Option<egui::TextureHandle>>,
@@ -159,11 +159,11 @@ pub fn show(
             let desc = cat_entry.description.get(*current_form).unwrap_or(&fallback);
             details::render(ui, desc);
             let text_fallback = Vec::new();
-            let ev_text = cat_entry.evolve_text.get(*current_form).unwrap_or(&text_fallback);
+            let ev_text = cat_entry.evolve_text.texts.get(*current_form).unwrap_or(&text_fallback);
             details::render_evolve(
                 ui,
                 ctx,
-                &cat_entry.unit_buy,
+                &cat_entry.unitbuy,
                 ev_text,
                 *current_form,
                 gatya_item_textures,

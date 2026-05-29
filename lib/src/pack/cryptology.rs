@@ -109,7 +109,7 @@ impl Keys {
 
         Ok(Self { ciphers })
     }
-    
+
     fn parse_cipher(region: Region, hex_key: &str, hex_iv: &str) -> Result<RegionalCipher, PackError> {
         let key_bytes = hex::decode(hex_key).map_err(|_| PackError::InvalidHexFormat)?;
         let iv_bytes = hex::decode(hex_iv).map_err(|_| PackError::InvalidHexFormat)?;

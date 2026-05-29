@@ -17,3 +17,4 @@ hex = "0.4.3"
 cipher = "0.5.2"
 ecb = "0.2.0"
 image = { version = "0.25", features = ["png"] }
+serde = { version = "1.0.228", features = ["derive"] }

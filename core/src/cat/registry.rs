@@ -1,6 +1,6 @@
 use crate::global::game::img015;
-use crate::cat::data::unitid::CatRaw;
-use crate::cat::data::skillacquisition::TalentGroupRaw;
+use nyanko::cat::unit::Battle;
+use nyanko::cat::unit::TalentGroup;
 use crate::global::game::abilities::CustomIcon;
 use crate::global::game::param::Param;
 use std::collections::HashMap;
@@ -37,9 +37,9 @@ pub struct CatAbilityDef {
     pub talent_id: u8, 
     pub group: DisplayGroup,
     pub schema: &'static [(&'static str, AttrUnit)],
-    pub get_attributes: fn(&CatRaw) -> Vec<(&'static str, i32, AttrUnit)>,
-    pub formatter: fn(val1: i32, stats: &CatRaw, target: &str, duration_frames: i32, param: &Param) -> String,
-    pub apply_func: Option<fn(&mut CatRaw, val1: i32, val2: i32, group: &TalentGroupRaw)>,
+    pub get_attributes: fn(&Battle) -> Vec<(&'static str, i32, AttrUnit)>,
+    pub formatter: fn(val1: i32, stats: &Battle, target: &str, duration_frames: i32, param: &Param) -> String,
+    pub apply_func: Option<fn(&mut Battle, val1: i32, val2: i32, group: &TalentGroup)>,
 }
 
 // --- FORMATTERS ---
@@ -60,7 +60,7 @@ fn get_dur_val(v1: i32, v2: i32) -> i32 {
     if v1 != 0 { v1 } else { v2 }
 }
 
-fn fmt_effective_range(stats: &CatRaw) -> String {
+fn fmt_effective_range(stats: &Battle) -> String {
     // Standing distance is ALWAYS dictated by Hit 1
     let primary_anchor = if stats.long_distance_1_anchor != 0 { 
         stats.long_distance_1_anchor 
@@ -115,7 +115,7 @@ fn fmt_effective_range(stats: &CatRaw) -> String {
     format!("{} {}\nStands at {} Range relative to Enemy Base", label_prefix, range_strings.join(" / "), primary_anchor)
 }
 
-fn fmt_multihit(stats: &CatRaw) -> String {
+fn fmt_multihit(stats: &Battle) -> String {
     let damage_hit_1 = stats.attack_1;
     let damage_hit_2 = stats.attack_2;
     let damage_hit_3 = stats.attack_3;
@@ -1550,7 +1550,7 @@ pub static CAT_ABILITY_REGISTRY: &[CatAbilityDef] = &[
 pub struct CatStatsDef {
     pub name: &'static str,
     pub display_name: &'static str,
-    pub get_value: fn(&CatRaw, i32) -> i32, 
+    pub get_value: fn(&Battle, i32) -> i32,
     pub formatter: fn(i32) -> String,
     pub linked_talent_id: Option<u8>,
     pub talent_modifier_fmt: Option<fn(i32, i32) -> String>,
@@ -1667,7 +1667,7 @@ pub fn get_cat_stat(name: &str) -> &'static CatStatsDef {
     CAT_STATS_REGISTRY.iter().find(|stat_definition| stat_definition.name == name).expect("CRITICAL: Hardcoded stat name was not found in CAT_STATS_REGISTRY")
 }
 
-pub fn format_cat_stat(name: &str, stats: &CatRaw, animation_frames: i32) -> String {
+pub fn format_cat_stat(name: &str, stats: &Battle, animation_frames: i32) -> String {
     let stat_definition = get_cat_stat(name);
     (stat_definition.formatter)((stat_definition.get_value)(stats, animation_frames))
 }

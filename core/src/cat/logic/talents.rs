@@ -1,7 +1,4 @@
-use crate::cat::data::skillacquisition::{TalentRaw, TalentGroupRaw};
-use crate::cat::data::unitid::CatRaw;
-use crate::cat::data::unitlevel::CatLevelCurve;
-use crate::cat::data::skilllevel::TalentCost;
+use nyanko::cat::unit::{Battle, LevelCurve, TalentCost, Talent, TalentGroup};
 use std::collections::HashMap;
 use crate::cat::registry::{self, AttrUnit};
 
@@ -23,10 +20,10 @@ pub fn calculate_talent_value(min: u16, max: u16, level: u8, max_level: u8) -> i
 
 // --- DYNAMIC UI TEXT ENGINE ---
 pub fn calculate_talent_display(
-    group: &TalentGroupRaw, 
-    base_stats: &CatRaw, 
+    group: &TalentGroup,
+    base_stats: &Battle,
     talent_level: u8, 
-    curve: Option<&CatLevelCurve>, 
+    curve: Option<&LevelCurve>,
     unit_level: i32
 ) -> Option<String> {
     let def = registry::get_by_talent_id(group.ability_id)?;
@@ -205,7 +202,7 @@ pub fn calculate_talent_display(
 }
 
 // --- STATE MUTATION ENGINE ---
-fn apply_target_traits(stats: &mut CatRaw, name_id: i16, type_id: u16) {
+fn apply_target_traits(stats: &mut Battle, name_id: i16, type_id: u16) {
     let mut apply_bit = |bit: u16| {
         match bit {
             0 => stats.target_red = 1,
@@ -237,7 +234,7 @@ fn apply_target_traits(stats: &mut CatRaw, name_id: i16, type_id: u16) {
     }
 }
 
-pub fn apply_talent_stats(base_stats: &CatRaw, talent_data: &TalentRaw, levels: &HashMap<u8, u8>) -> CatRaw {
+pub fn apply_talent_stats(base_stats: &Battle, talent_data: &Talent, levels: &HashMap<u8, u8>) -> Battle {
     let mut stats = base_stats.clone();
     
     for (index, group) in talent_data.groups.iter().enumerate() {
@@ -277,7 +274,7 @@ pub fn get_talent_np_cost(cost_id: u8, level: u8, costs_map: &HashMap<u8, Talent
 }
 
 pub fn get_total_np_cost(
-    talent_data: &TalentRaw,
+    talent_data: &Talent,
     talent_levels: &HashMap<u8, u8>,
     costs_map: &HashMap<u8, TalentCost>
 ) -> i32 {

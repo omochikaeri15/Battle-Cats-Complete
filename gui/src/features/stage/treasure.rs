@@ -4,7 +4,7 @@ use std::path::Path;
 
 use core::stage::registry::Stage;
 use core::stage::data::mapstagedata::RewardStructure;
-use core::cat::data::unitbuy::UnitBuyRow;
+use nyanko::cat::unit::UnitBuy;
 use core::global::formats::gatyaitembuy::GatyaItemBuy;
 use core::global::formats::gatyaitemname::GatyaItemName;
 use core::stage::logic::treasure as treasure_logic; // Pure core logic
@@ -77,7 +77,7 @@ pub fn draw(
     item_buy_registry: &HashMap<u32, GatyaItemBuy>,
     item_name_registry: &HashMap<usize, GatyaItemName>,
     drop_chara_registry: &HashMap<u32, u32>,
-    unit_buy_registry: &HashMap<u32, UnitBuyRow>,
+    unit_buy_registry: &HashMap<u32, UnitBuy>,
     item_texture_cache: &mut HashMap<u32, egui::TextureHandle>,
     active_language_priority_array: &[String]
 ) {

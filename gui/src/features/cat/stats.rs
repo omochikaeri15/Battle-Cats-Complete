@@ -1,13 +1,13 @@
 use eframe::egui;
 use core::cat::logic::scanner::CatEntry;
-use core::cat::logic::stats::CatRaw;
+use nyanko::cat::unit::Battle;
 use crate::global::stat_grid::{grid_cell, grid_cell_custom, render_frames};
 use core::cat::registry::{get_cat_stat, format_cat_stat};
 
 pub fn render(
     ui: &mut egui::Ui, 
     cat: &CatEntry, 
-    final_stats: &CatRaw, 
+    final_stats: &Battle,
     form: usize
 ) {
     let anim_frames = cat.atk_anim_frames[form];

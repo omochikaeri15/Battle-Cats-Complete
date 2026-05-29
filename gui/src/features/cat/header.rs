@@ -7,7 +7,7 @@ use core::settings::logic::Settings;
 use core::global::utils::autocrop;
 use crate::global::name_box;
 use core::cat::paths;
-use core::cat::data::skilllevel::TalentCost;
+use nyanko::cat::unit::TalentCost;
 use crate::global::sheet::GuiSpriteSheet;
 
 pub const HEADER_NP_ICON_SIZE: f32 = 24.0;
@@ -136,7 +136,7 @@ pub fn render(
 
 fn render_talent_controls(
     ui: &mut egui::Ui,
-    talent_data: &core::cat::data::skillacquisition::TalentRaw,
+    talent_data: &nyanko::cat::unit::Talent,
     talent_levels: &mut HashMap<u8, u8>,
     talent_costs: &HashMap<u8, TalentCost>,
     img022_sheets: &[GuiSpriteSheet],

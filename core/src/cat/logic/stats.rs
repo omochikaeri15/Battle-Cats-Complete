@@ -1,12 +1,11 @@
-pub use crate::cat::data::unitid::CatRaw;
+use nyanko::cat::unit::{Battle, LevelCurve};
 pub use crate::cat::data::unitid::load_from_id;
 pub use crate::cat::data::unitid::ICON_SIZE;
-pub use crate::cat::data::unitlevel::CatLevelCurve;
 
-use crate::cat::data::skillacquisition::TalentRaw;
+use nyanko::cat::unit::Talent;
 use std::collections::HashMap;
 
-pub fn apply_level(base_stats: &CatRaw, curve: Option<&CatLevelCurve>, level: i32) -> CatRaw {
+pub fn apply_level(base_stats: &Battle, curve: Option<&LevelCurve>, level: i32) -> Battle {
     let mut s = base_stats.clone();
     if let Some(c) = curve {
         s.hitpoints = c.calculate_stat(s.hitpoints, level);
@@ -18,12 +17,12 @@ pub fn apply_level(base_stats: &CatRaw, curve: Option<&CatLevelCurve>, level: i3
 }
 
 pub fn get_final_stats(
-    base_stats: &CatRaw, 
-    curve: Option<&CatLevelCurve>, 
+    base_stats: &Battle,
+    curve: Option<&LevelCurve>,
     level: i32, 
-    talent_data: Option<&TalentRaw>, 
+    talent_data: Option<&Talent>,
     talent_levels: Option<&HashMap<u8, u8>>
-) -> CatRaw {
+) -> Battle {
     let leveled = apply_level(base_stats, curve, level);
     if let (Some(t_data), Some(levels)) = (talent_data, talent_levels) {
         crate::cat::logic::talents::apply_talent_stats(&leveled, t_data, levels)

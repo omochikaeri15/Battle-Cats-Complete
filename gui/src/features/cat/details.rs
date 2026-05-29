@@ -1,8 +1,8 @@
 use eframe::egui;
 use std::collections::HashMap;
 use std::path::Path;
-use image::GenericImageView; 
-use core::cat::data::unitbuy::UnitBuyRow;
+use image::GenericImageView;
+use nyanko::cat::unit::UnitBuy;
 use core::global::io::paths;
 
 pub fn render(ui: &mut egui::Ui, description: &[String]) {
@@ -31,7 +31,7 @@ pub fn render(ui: &mut egui::Ui, description: &[String]) {
 pub fn render_evolve(
     ui: &mut egui::Ui, 
     ctx: &egui::Context,
-    unit_buy: &UnitBuyRow, 
+    unit_buy: &UnitBuy, 
     evolution_text: &[String],
     current_form: usize,
     texture_cache: &mut HashMap<i32, Option<egui::TextureHandle>>,

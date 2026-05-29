@@ -52,7 +52,7 @@ pub fn load(dir_path: &Path, filename: &str, lang_priority: &[String]) -> HashMa
             continue;
         };
 
-        let item_buy_data = GatyaItemBuy {
+        let item_unitbuy = GatyaItemBuy {
             rarity: line_parts[0].trim().parse().unwrap_or(0),
             reflect_or_storage: line_parts[1].trim().parse().unwrap_or(0),
             price: line_parts[2].trim().parse().unwrap_or(0),
@@ -69,7 +69,7 @@ pub fn load(dir_path: &Path, filename: &str, lang_priority: &[String]) -> HashMa
             row_index: calculated_row_index,
         };
 
-        item_buy_map.insert(stage_drop_item_id, item_buy_data);
+        item_buy_map.insert(stage_drop_item_id, item_unitbuy);
     }
 
     item_buy_map

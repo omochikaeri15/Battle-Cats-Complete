@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use crate::cat::registry::{AbilityIcon, CAT_ABILITY_REGISTRY, CAT_STATS_REGISTRY};
-use crate::cat::logic::stats::CatRaw;
+//use crate::cat::logic::stats::Battle;
+use nyanko::cat::unit::Battle;
 use crate::cat::logic::scanner::CatEntry;
 use crate::cat::logic::talents::apply_talent_stats;
 use crate::global::game::img015;
@@ -87,7 +88,7 @@ impl CatFilterState {
     }
 }
 
-pub fn get_stat_value(s: &CatRaw, stat: &str, anim_frames: i32) -> i32 {
+pub fn get_stat_value(s: &Battle, stat: &str, anim_frames: i32) -> i32 {
     let reg_name = match stat {
         "Cooldown (f)" => "Cooldown", 
         "Atk Cycle (f)" => "Atk Cycle",
@@ -104,7 +105,7 @@ pub fn get_icon_name(icon: &AbilityIcon) -> String {
     CAT_ABILITY_REGISTRY.iter().find(|d| &d.icon == icon).map(|d| d.name).unwrap_or("Unknown").to_string()
 }
 
-pub fn has_trait_or_ability(s: &CatRaw, icon: &AbilityIcon) -> bool {
+pub fn has_trait_or_ability(s: &Battle, icon: &AbilityIcon) -> bool {
     CAT_ABILITY_REGISTRY.iter().find(|d| &d.icon == icon).map_or(false, |def| {
         !(def.get_attributes)(s).is_empty()
     })
@@ -113,7 +114,7 @@ pub fn has_trait_or_ability(s: &CatRaw, icon: &AbilityIcon) -> bool {
 pub fn entity_passes_filter(cat: &CatEntry, filter: &CatFilterState) -> bool {
     let any_rarity_selected = filter.rarities.iter().any(|&r| r);
     if any_rarity_selected {
-        let r_idx = cat.unit_buy.rarity as usize;
+        let r_idx = cat.unitbuy.rarity as usize;
         if r_idx >= filter.rarities.len() || !filter.rarities[r_idx] {
             return false; 
         }

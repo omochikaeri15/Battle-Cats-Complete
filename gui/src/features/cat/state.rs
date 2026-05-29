@@ -135,10 +135,10 @@ pub fn show(ctx: &egui::Context, state: &mut CatListState, settings: &mut Settin
                         }
 
                         if settings.cat_data.auto_level_calculations {
-                            let base_max = new_cat.unit_buy.level_cap_catseye;
-                            let plus_max = new_cat.unit_buy.level_cap_plus;
-                            let is_legend_rare = new_cat.unit_buy.rarity == 5;
-                            let is_normal_rare = new_cat.unit_buy.rarity == 0;
+                            let base_max = new_cat.unitbuy.level_cap_catseye;
+                            let plus_max = new_cat.unitbuy.level_cap_plus;
+                            let is_legend_rare = new_cat.unitbuy.rarity == 5;
+                            let is_normal_rare = new_cat.unitbuy.rarity == 0;
 
                             if is_legend_rare {
                                 state.data.current_level = 50;

@@ -8,7 +8,8 @@ use crate::stage::registry::StageRegistry;
 use crate::enemy::logic::scanner::EnemyEntry;
 use crate::stage::data::drop_chara;
 use crate::stage::data::{lockskipdata, scatcpusetting};
-use crate::cat::data::unitbuy::{self, UnitBuyRow};
+use crate::cat::data::unitbuy;
+use nyanko::cat::unit::UnitBuy;
 use crate::global::formats::gatyaitembuy::{self, GatyaItemBuy};
 use crate::global::formats::gatyaitemname::{self, GatyaItemName};
 use crate::stage::logic::loader;
@@ -28,7 +29,7 @@ pub struct StageDataState {
     #[serde(skip)] pub item_buy_registry: HashMap<u32, GatyaItemBuy>,
     #[serde(skip)] pub item_name_registry: HashMap<usize, GatyaItemName>,
     #[serde(skip)] pub drop_chara_registry: HashMap<u32, u32>,
-    #[serde(skip)] pub unit_buy_registry: HashMap<u32, UnitBuyRow>,
+    #[serde(skip)] pub unit_buy_registry: HashMap<u32, UnitBuy>,
     #[serde(skip)] pub lock_skip_registry: HashMap<u32, lockskipdata::LockSkipEntry>,
     #[serde(skip)] pub scat_cpu_setting: scatcpusetting::ScatCpuSetting,
     #[serde(skip)] pub active_language_priority: Vec<String>,
