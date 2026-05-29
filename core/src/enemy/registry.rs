@@ -1,7 +1,7 @@
 use crate::global::game::img015;
 use crate::enemy::data::t_unit::EnemyRaw;
 use crate::global::game::abilities::CustomIcon;
-use crate::global::game::param::Param;
+use nyanko::common::Param;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

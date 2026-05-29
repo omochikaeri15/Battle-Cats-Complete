@@ -1,5 +1,5 @@
 use eframe::egui;
-use core::global::game::param::Param;
+use nyanko::common::Param;
 use core::global::io::json;
 use crate::global::shared::DragGuard;
 use crate::updater::Updater;

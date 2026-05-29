@@ -13,7 +13,7 @@ use crate::features::statblock::builder::{generate_and_copy, generate_and_save};
 use super::{header, stats, abilities, talents, details, viewer};
 use super::header::ExportAction;
 use crate::features::cat::statblock::build_cat_statblock;
-use core::global::game::param::Param;
+use nyanko::common::Param;
 use core::global::context::GlobalContext;
 use core::cat::logic::context::CatRenderContext;
 use crate::global::shared::DragGuard;

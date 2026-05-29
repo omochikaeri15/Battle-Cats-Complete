@@ -1,9 +1,9 @@
 use crate::animation::graphics::{timeline, transform};
 use crate::animation::utils::boundary::calculate_animation_bounds;
 use crate::animation::utils::periodicity::calculate_difference;
+use crate::common::SpriteSheet;
 
 pub use crate::animation::data::mamodel::Model;
-pub use crate::common::data::imgcut::SpriteSheet;
 pub use crate::animation::data::maanim::Animation as Anim;
 
 /// A parsed container holding a unit's skeletal model and texture atlas.

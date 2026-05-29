@@ -9,7 +9,7 @@ use core::cat::logic::state::CatDataState;
 use crate::global::sheet::GuiSpriteSheet;
 use crate::global::assets::CustomAssets;
 use core::settings::logic::Settings;
-use core::global::game::param::Param;
+use nyanko::common::Param;
 
 // We now import Rig instead of Model
 use nyanko::animation::engine::Unit;

@@ -5,7 +5,7 @@ use std::sync::Arc;
 use core::enemy::logic::state::EnemyDataState;
 use core::settings::logic::Settings;
 use crate::global::assets::CustomAssets;
-use core::global::game::param::Param;
+use nyanko::common::Param;
 
 pub use core::enemy::logic::state::EnemyDetailTab;
 

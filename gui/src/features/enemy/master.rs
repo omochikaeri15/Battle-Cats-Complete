@@ -4,11 +4,11 @@ use crate::features::enemy::state::EnemyDetailTab;
 use core::settings::logic::Settings;
 use core::enemy::registry::Magnification;
 use crate::global::sheet::GuiSpriteSheet;
-use nyanko::animation::engine::Unit; // Add Rig import
+use nyanko::animation::engine::Unit;
 use std::sync::Arc;
 use crate::features::animation::viewer::AnimViewer;
 use crate::global::assets::CustomAssets;
-use core::global::game::param::Param;
+use nyanko::common::Param;
 use core::global::context::GlobalContext;
 use core::enemy::logic::context::EnemyRenderContext;
 use crate::features::statblock::builder::{generate_and_copy, generate_and_save};
