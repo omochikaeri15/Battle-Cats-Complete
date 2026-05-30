@@ -224,8 +224,10 @@ pub fn render_frame(
 
         let mut geometry = resolve_frame(unit, animation, frame_time);
         for part in &mut geometry {
-            if part.glow > 1 {
+            if part.glow == 1 || part.glow == 3 {
                 part.glow = 1;
+            } else if part.glow == 2 {
+                part.glow = 0;
             }
         }
 
@@ -262,7 +264,13 @@ pub fn prepare_image(mut pixel_buffer: Vec<u8>, width: u32, height: u32, is_opaq
             // Force fully opaque so encoders don't apply 1-bit transparency logic to anti-aliased edges
             chunk[3] = 255;
         } else {
-            let alpha_value = chunk[3];
+            // --- ALPHA SYNTHESIS ---
+            // Reconstruct the missing alpha for additive pixels by finding the brightest RGB channel.
+            // For standard premultiplied pixels, max(RGB) is always <= Alpha, so this does nothing.
+            let alpha_value = chunk[3].max(chunk[0]).max(chunk[1]).max(chunk[2]);
+            chunk[3] = alpha_value;
+
+            // Un-premultiply the straight-alpha encoders (GIF/WebP)
             if alpha_value > 0 && alpha_value < 255 {
                 let float_alpha = alpha_value as f32 / 255.0;
                 chunk[0] = (chunk[0] as f32 / float_alpha).min(255.0) as u8;
