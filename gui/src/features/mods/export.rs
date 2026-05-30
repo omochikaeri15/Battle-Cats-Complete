@@ -7,7 +7,7 @@ use core::mods::logic::metadata;
 use core::addons::toolpaths::{self, Presence};
 use core::mods::export::{patch, create, update, pack};
 
-pub fn show(context: &egui::Context, state: &mut ModListState, _settings: &Settings) {
+pub fn show(context: &egui::Context, state: &mut ModListState, settings: &Settings) {
     let mut is_open = state.data.export.is_open;
     let window_id = egui::Id::new("export_mod_window");
     let tracking_open_id = egui::Id::new("export_was_open");
@@ -76,7 +76,7 @@ pub fn show(context: &egui::Context, state: &mut ModListState, _settings: &Setti
         ui_container.add_space(10.0);
 
         match state.data.export.tab {
-            ExportType::Apk => show_apk_view(ui_container, state),
+            ExportType::Apk => show_apk_view(ui_container, state, settings),
             ExportType::Pack => show_pack_view(ui_container, state),
         }
 
@@ -118,7 +118,7 @@ pub fn show(context: &egui::Context, state: &mut ModListState, _settings: &Setti
     state.data.export.is_open = is_open;
 }
 
-fn show_apk_view(ui_container: &mut egui::Ui, state: &mut ModListState) {
+fn show_apk_view(ui_container: &mut egui::Ui, state: &mut ModListState, settings: &Settings) {
     let apktool_present = toolpaths::apktool_status() == Presence::Installed;
 
     if !apktool_present && state.data.export.patch_mode == PatchMode::Create {
@@ -274,7 +274,7 @@ fn show_apk_view(ui_container: &mut egui::Ui, state: &mut ModListState) {
         if state.data.export.patch_mode == PatchMode::Create {
             create::start_apk_export(&mut state.data);
         } else {
-            update::start_fast_track_export(&mut state.data);
+            update::start_fast_track_export(&mut state.data, settings);
         }
     }
 }

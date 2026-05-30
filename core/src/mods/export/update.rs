@@ -14,7 +14,7 @@ use crate::mods::export::pack;
 use crate::mods::export::sign;
 use crate::mods::export::patch::{EVENT_RECEIVER, ExportEvent, spawn_log_adapter};
 
-pub fn start_fast_track_export(state: &mut ModDataState) {
+pub fn start_fast_track_export(state: &mut ModDataState, settings: &Settings) {
     if state.export.is_busy { return; }
 
     state.export.log_content.clear();
@@ -41,12 +41,14 @@ pub fn start_fast_track_export(state: &mut ModDataState) {
     let (transmitter, receiver) = mpsc::channel();
     if let Ok(mut guard) = EVENT_RECEIVER.lock() { *guard = Some(receiver); }
 
+    let replace_on_update = settings.mods.replace_on_update;
+    let enforce_key_validation = settings.game_data.enforce_key_validation;
+
     thread::spawn(move || {
         let string_transmitter = spawn_log_adapter(transmitter.clone());
         let log_callback = |message: String| { let _ = transmitter.send(ExportEvent::Log(message)); };
 
-        let settings: Settings = crate::global::io::json::load("settings.json").unwrap_or_default();
-        let user_keys = match keys::verify(settings.game_data.enforce_key_validation, &string_transmitter) {
+        let user_keys = match keys::verify(enforce_key_validation, &string_transmitter) {
             Ok(keys) => keys,
             Err(error) => {
                 let _ = transmitter.send(ExportEvent::Error(error));
@@ -144,14 +146,14 @@ pub fn start_fast_track_export(state: &mut ModDataState) {
         let mut injected_count = 0;
 
         for index in 0..archive.len() {
-            let archive_result = archive.by_index(index);
+            let mut archive_file = match archive.by_index(index) {
+                Ok(file) => file,
+                Err(error) => {
+                    let _ = transmitter.send(ExportEvent::Error(format!("Failed to access internal APK file at index {}: {}", index, error)));
+                    return;
+                }
+            };
 
-            if let Err(error) = archive_result {
-                let _ = transmitter.send(ExportEvent::Error(format!("Failed to access internal APK file at index {}: {}", index, error)));
-                return;
-            }
-
-            let mut archive_file = archive_result.unwrap();
             let file_name = archive_file.name().to_string();
 
             if file_name.starts_with("META-INF/") { continue; }
@@ -252,13 +254,13 @@ pub fn start_fast_track_export(state: &mut ModDataState) {
             parent_canon == export_canon
         });
 
-        let final_name = if !settings.mods.replace_on_update && is_in_exports {
+        let final_name = if !replace_on_update && is_in_exports {
             format!("{}_updated", original_filename)
         } else {
             original_filename.clone()
         };
 
-        let final_apk_path = if settings.mods.replace_on_update {
+        let final_apk_path = if replace_on_update {
             input_apk_path.with_extension("apk")
         } else {
             export_dir.join(format!("{}.apk", final_name))
@@ -270,6 +272,12 @@ pub fn start_fast_track_export(state: &mut ModDataState) {
         }
 
         let _ = fs::remove_dir_all(&app_dir);
-        let _ = transmitter.send(ExportEvent::Success(format!("Successfully Updated {}.apk!", final_name)));
+
+        let success_message = if replace_on_update {
+            format!("Successfully Updated {}.apk!", final_name)
+        } else {
+            format!("Successfully exported {}.apk!", final_name)
+        };
+        let _ = transmitter.send(ExportEvent::Success(success_message));
     });
 }
