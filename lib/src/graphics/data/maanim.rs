@@ -1,5 +1,5 @@
 use crate::common::utils::csv;
-use crate::animation::utils::math;
+use crate::graphics::utils::math;
 
 /// Represents a single point of transformation in time.
 #[derive(Clone, Debug)]

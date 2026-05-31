@@ -1,10 +1,10 @@
-use crate::animation::graphics::{timeline, transform};
-use crate::animation::utils::boundary::calculate_animation_bounds;
-use crate::animation::utils::periodicity::calculate_difference;
-use crate::common::SpriteSheet;
+use crate::graphics::game::{timeline, transform};
+use crate::graphics::utils::boundary::calculate_animation_bounds;
+use crate::graphics::utils::periodicity::calculate_difference;
 
-pub use crate::animation::data::mamodel::Model;
-pub use crate::animation::data::maanim::Animation as Anim;
+pub use crate::graphics::data::imgcut::SpriteSheet;
+pub use crate::graphics::data::mamodel::Model;
+pub use crate::graphics::data::maanim::Animation as Anim;
 
 /// A parsed container holding a unit's skeletal model and texture atlas.
 pub struct Unit {
@@ -51,7 +51,7 @@ impl Unit {
         animations: &[&Anim],
         tolerance: f32
     ) -> Option<(f32, f32, f32, f32)> {
-        let tolerance = crate::animation::utils::boundary::Tolerance::new(tolerance);
+        let tolerance = crate::graphics::utils::boundary::Tolerance::new(tolerance);
         let bounds = calculate_animation_bounds(&self.model, &self.sheet, animations, tolerance)?;
 
         Some((bounds.min_x, bounds.min_y, bounds.width(), bounds.height()))
@@ -173,5 +173,5 @@ pub fn resolve_frame(
 
     let world_parts = transform::solve_hierarchy(&parts, &unit.model);
 
-    crate::animation::graphics::construct::build_geometry(&world_parts, &unit.sheet)
+    crate::graphics::game::construct::build_geometry(&world_parts, &unit.sheet)
 }

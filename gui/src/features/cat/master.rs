@@ -4,7 +4,7 @@ use std::sync::Arc;
 use core::cat::logic::scanner::CatEntry;
 use crate::features::cat::header::DetailTab;
 use crate::global::sheet::GuiSpriteSheet;
-use nyanko::animation::engine::Unit; // Add Rig import
+use nyanko::graphics::animation::Unit; // Add Rig import
 use core::settings::logic::Settings;
 use crate::features::animation::viewer::AnimViewer;
 use nyanko::cat::unit::TalentCost;

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 
 // STRICT BOUNDARY: Importing exclusively from the public engine API
-use nyanko::animation::engine::{Unit, Anim};
+use nyanko::graphics::animation::{Unit, Anim};
 
 use core::animation::export::encoding::{ExportFormat, EncoderStatus};
 use core::animation::export::state::{ExporterState, ExportMode, LoopStatus};

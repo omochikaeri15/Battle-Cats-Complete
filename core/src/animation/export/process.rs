@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex, mpsc, atomic::AtomicBool};
 use std::path::{PathBuf, Path};
 
-use nyanko::animation::engine::Anim;
+use nyanko::graphics::animation::Anim;
 
 use crate::animation::export::encoding::{ExportConfig, ExportFormat, EncoderStatus};
 use crate::animation::export::state::{ExporterState, ExportMode};

@@ -1,8 +1,8 @@
-use crate::animation::data::maanim::Animation;
-use crate::animation::data::mamodel::Model;
-use crate::animation::graphics::timeline;
-use crate::animation::graphics::transform::{self, Vector};
-use crate::common::data::imgcut::SpriteSheet;
+use crate::graphics::data::maanim::Animation;
+use crate::graphics::data::mamodel::Model;
+use crate::graphics::game::timeline;
+use crate::graphics::game::transform::{self, Vector};
+use crate::graphics::data::imgcut::SpriteSheet;
 
 #[derive(Clone, Copy, Debug)]
 pub struct BoundingBox {

@@ -2,7 +2,7 @@ use eframe::egui;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::Ordering;
 
-use nyanko::animation::engine::{Unit, Anim};
+use nyanko::graphics::animation::{Unit, Anim};
 use core::animation::logic::canvas::GlowRenderer;
 
 use core::animation::export::state::ExporterState;

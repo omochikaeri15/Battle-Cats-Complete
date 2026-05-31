@@ -12,7 +12,7 @@ use core::settings::logic::Settings;
 use nyanko::common::Param;
 
 // We now import Rig instead of Model
-use nyanko::animation::engine::Unit;
+use nyanko::graphics::animation::Unit;
 
 use crate::features::cat::list::CatList;
 use crate::features::animation::viewer::AnimViewer;

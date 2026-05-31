@@ -3,7 +3,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 // STRICT BOUNDARY: Only importing the public aggregate roots
-use nyanko::animation::engine::{Unit, Anim};
+use nyanko::graphics::animation::{Unit, Anim};
 use crate::animation::export::state::LoopStatus;
 
 const TIMEOUT_SECONDS: u64 = 180;

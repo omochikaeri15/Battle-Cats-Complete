@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use std::sync::Arc;
 
 use core::enemy::logic::scanner::EnemyEntry;
-use nyanko::animation::engine::Unit;
+use nyanko::graphics::animation::Unit;
 use crate::features::animation::viewer::AnimViewer;
 use core::settings::logic::state::Settings;
 use core::enemy::paths::{self, AnimType};

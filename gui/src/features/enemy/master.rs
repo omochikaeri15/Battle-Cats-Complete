@@ -4,7 +4,7 @@ use crate::features::enemy::state::EnemyDetailTab;
 use core::settings::logic::Settings;
 use core::enemy::registry::Magnification;
 use crate::global::sheet::GuiSpriteSheet;
-use nyanko::animation::engine::Unit;
+use nyanko::graphics::animation::Unit;
 use std::sync::Arc;
 use crate::features::animation::viewer::AnimViewer;
 use crate::global::assets::CustomAssets;

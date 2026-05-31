@@ -2,7 +2,7 @@ use eframe::egui;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use nyanko::animation::engine::{Unit, Anim};
+use nyanko::graphics::animation::{Unit, Anim};
 use core::animation::logic::canvas::GlowRenderer;
 
 use core::animation::logic::constants::{IDX_NONE, IDX_MODEL, IDX_SPIRIT, IDX_WALK, IDX_IDLE, IDX_ATTACK, IDX_KB, IDX_BURROW, IDX_SURFACE};

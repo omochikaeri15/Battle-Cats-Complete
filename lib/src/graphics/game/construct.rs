@@ -1,6 +1,6 @@
-use crate::animation::engine::FrameData;
-use crate::animation::graphics::transform::WorldTransform;
-use crate::common::data::imgcut::SpriteSheet;
+use crate::graphics::animation::FrameData;
+use crate::graphics::game::transform::WorldTransform;
+use crate::graphics::data::imgcut::SpriteSheet;
 
 pub fn build_geometry(
     parts: &[WorldTransform],

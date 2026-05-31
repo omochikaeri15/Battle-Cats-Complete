@@ -8,7 +8,7 @@ use image::RgbaImage;
 use webp_animation::Encoder as WebpEncoder;
 use gif::{Encoder as GifEncoder, Frame as GifFrame, Repeat as GifRepeat, DisposalMethod};
 
-use nyanko::animation::engine::{Unit, Anim, resolve_frame};
+use nyanko::graphics::animation::{Unit, Anim, resolve_frame};
 use crate::animation::logic::canvas::GlowRenderer;
 
 // SHARED DATA STRUCTURES

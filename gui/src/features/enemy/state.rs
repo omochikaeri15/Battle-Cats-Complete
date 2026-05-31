@@ -17,7 +17,7 @@ use crate::features::enemy::filter::EnemyFilterState;
 use crate::global::sheet::GuiSpriteSheet;
 
 // We now import Rig instead of Model
-use nyanko::animation::engine::Unit;
+use nyanko::graphics::animation::Unit;
 
 pub const TOP_PANEL_PADDING: f32 = 2.5;
 pub const SEARCH_FILTER_GAP: f32 = 5.0;
