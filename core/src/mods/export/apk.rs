@@ -211,7 +211,13 @@ pub fn start_export(state: &mut ModDataState, settings: &Settings) {
 
         let _ = fs::remove_dir_all(&app_dir);
 
-        let success_message = if is_update { format!("Successfully Updated!") } else { format!("Successfully Built {}!", output_name) };
+        let final_filename = final_apk_path.file_name().unwrap_or_default().to_string_lossy();
+        let success_message = if is_update && replace_on_update && is_in_exports {
+            format!("Successfully Updated {}!", final_filename)
+        } else {
+            format!("Successfully Built {}!", final_filename)
+        };
+
         let _ = transmitter.send(ExportEvent::Success(success_message));
     });
 }
