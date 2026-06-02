@@ -1234,7 +1234,7 @@ checksum = "7c74b8349d32d297c9134b8c88677813a227df8f779daa29bfc29c183fe3dca6"
 
 [[package]]
 name = "core"
-version = "0.14.9"
+version = "0.15.0"
 dependencies = [
  "aes 0.8.4",
  "anyhow",
@@ -2600,7 +2600,7 @@ dependencies = [
 
 [[package]]
 name = "gui"
-version = "0.14.9"
+version = "0.15.0"
 dependencies = [
  "ab_glyph",
  "arboard",
