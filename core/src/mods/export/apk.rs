@@ -66,7 +66,7 @@ pub fn start_export(state: &mut ModDataState, settings: &Settings) {
 
         // Handle Splits (XAPK/APKM)
         if extension == "xapk" || extension == "apkm" || extension == "apks" {
-            log_callback("Merging XAPK into APK...".to_string());
+            log_callback("Merging split APKs...".to_string());
             let _ = fs::create_dir_all(&xapk_dir);
             let merged_temp_path = xapk_dir.join("merged_xapk.apk");
 
@@ -181,7 +181,7 @@ pub fn start_export(state: &mut ModDataState, settings: &Settings) {
         // Normalize & Sign
         log_callback("Normalizing binaries...".to_string());
         let normalized_apk_path = app_dir.join("normalized_final.apk");
-        if let Err(error) = modify::normalize_apk(&unsigned_apk_path, &normalized_apk_path, &input_apk_path) {
+        if let Err(error) = modify::normalize_apk(&unsigned_apk_path, &normalized_apk_path, &working_apk) {
             let _ = transmitter.send(ExportEvent::Error(format!("Normalization Error: {}", error))); return;
         }
 

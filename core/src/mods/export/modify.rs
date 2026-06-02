@@ -383,29 +383,11 @@ pub fn normalize_apk(input_apk: &Path, output_apk: &Path, original_apk: &Path) -
 
     let original_file = fs::File::open(original_apk).map_err(|error| format!("Failed to open original APK: {}", error))?;
     let mut original_archive = ZipArchive::new(original_file).map_err(|error| format!("Failed to read original APK: {}", error))?;
-
+    
     for index in 0..original_archive.len() {
-        let mut archive_file = original_archive.by_index(index).map_err(|error| error.to_string())?;
-        let file_name = archive_file.name().to_string();
-
-        if !file_name.ends_with(".apk") {
-            if archive_file.compression() == zip::CompressionMethod::Stored {
-                stored_files_map.insert(file_name);
-            }
-            continue;
-        }
-
-        let mut apk_data = Vec::new();
-        archive_file.read_to_end(&mut apk_data).map_err(|error| error.to_string())?;
-
-        let cursor = Cursor::new(apk_data);
-        let mut nested_archive = ZipArchive::new(cursor).map_err(|error| error.to_string())?;
-
-        for nested_index in 0..nested_archive.len() {
-            let nested_file = nested_archive.by_index(nested_index).map_err(|error| error.to_string())?;
-            if nested_file.compression() == zip::CompressionMethod::Stored {
-                stored_files_map.insert(nested_file.name().to_string());
-            }
+        let archive_file = original_archive.by_index(index).map_err(|error| error.to_string())?;
+        if archive_file.compression() == zip::CompressionMethod::Stored {
+            stored_files_map.insert(archive_file.name().to_string());
         }
     }
 
