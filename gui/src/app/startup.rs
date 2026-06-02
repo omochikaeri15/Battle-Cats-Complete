@@ -33,6 +33,12 @@ impl BattleCatsApp {
         app.mod_state.data.refresh_mods();
         updater::cleanup_temp_files();
 
+        // Clean up deprecated apktool directory from earlier versions
+        let old_apktool_dir = core::addons::toolpaths::get_tools_dir().join("apktool");
+        if old_apktool_dir.exists() {
+            let _ = std::fs::remove_dir_all(old_apktool_dir);
+        }
+
         app.param = load_param(Path::new("game/tables"), &app.settings.general.language_priority).unwrap_or_default();
 
         let mut expected_hash = 0;
