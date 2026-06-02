@@ -71,9 +71,4 @@ Various people have motivated and helped me create this project:
 - **fieryhenry:** Coder with many Battle Cats related projects of their own, of which I took inspiration from.
 - **Timtams:** Did field research to confirm certain game data quirks, also supplied some custom assets.
 
-## Legal
-This tool is not affiliated with, endorsed by, or sponsored by PONOS Corp. This project is for educational purposes only. Assets are copyright PONOS Corp. Please support the official release.
-
-*This applcation is intended to be used with legally obtained game files, keys, IV, and APKs only. Make sure to recieve explicit permission from PONOS Corp. to use their data and assets.*
-
-*The developers of this tool assume no responsibility for any legal issues, account bans, or damages resulting from the use of this software. Use at your own risk.*
+>This is an unofficial, educational tool. For full details regarding PONOS Corp. copyrights, authorized handling of game files and decryption keys, and our strict liability disclaimer, please read LEGAL.md before use.
