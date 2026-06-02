@@ -1,6 +1,6 @@
 use eframe::egui;
 use core::addons::adb::download::AdbManager;
-use core::addons::apktool::download::ApktoolManager;
+use core::addons::apkeditor::download::ApkeditorManager;
 use core::addons::avifenc::download::AvifManager;
 use core::addons::ffmpeg::download::FfmpegManager;
 #[cfg(target_os = "windows")]
@@ -16,7 +16,7 @@ pub struct AddonDeleteState {
 }
 
 static ADB_MANAGER: Mutex<Option<AdbManager>> = Mutex::new(None);
-static APKTOOL_MANAGER: Mutex<Option<ApktoolManager>> = Mutex::new(None);
+static APKTOOL_MANAGER: Mutex<Option<ApkeditorManager>> = Mutex::new(None);
 static AVIF_MANAGER: Mutex<Option<AvifManager>> = Mutex::new(None);
 static FFMPEG_MANAGER: Mutex<Option<FfmpegManager>> = Mutex::new(None);
 
@@ -34,9 +34,9 @@ pub fn show(ui: &mut egui::Ui, drag_guard: &mut DragGuard) -> bool {
         #[cfg(target_os = "windows")]
         let oem_manager = oem_lock.get_or_insert_with(OemManager::default);
 
-        let mut apktool_lock = APKTOOL_MANAGER.lock().unwrap();
-        let apktool_manager = apktool_lock.get_or_insert_with(ApktoolManager::default);
-        apktool_manager.poll();
+        let mut apkeditor_lock = APKTOOL_MANAGER.lock().unwrap();
+        let apkeditor_manager = apkeditor_lock.get_or_insert_with(ApkeditorManager::default);
+        apkeditor_manager.poll();
 
         let mut avif_lock = AVIF_MANAGER.lock().unwrap();
         let avif_manager = avif_lock.get_or_insert_with(AvifManager::default);
@@ -91,12 +91,12 @@ pub fn show(ui: &mut egui::Ui, drag_guard: &mut DragGuard) -> bool {
                 }
 
                 ui.add_space(20.0);
-                ui.heading("Apktool");
+                ui.heading("APKEditor");
                 ui.add_space(5.0);
-                ui.label("Allows proper APK decompilation and recompilation for Mod Exports\nEnables \"Create\" Mod Export option");
+                ui.label("Allows mod export to convert XAPK/APKM/APKS files into an APK\nDownloads a portable JRE for you, falling back to system JRE upon failure");
                 ui.add_space(8.0);
-                let apktool_status = apktool_manager.status.clone();
-                render_addon_controls(ui, &apktool_status, "Apktool", || apktool_manager.install(), "apktool_delete");
+                let apkeditor_status = apkeditor_manager.status.clone();
+                render_addon_controls(ui, &apkeditor_status, "APKEditor", || apkeditor_manager.install(), "apkeditor_delete");
 
                 ui.add_space(20.0);
                 ui.heading("FFMPEG");
@@ -125,8 +125,8 @@ fn handle_modals(ctx: &egui::Context, drag_guard: &mut DragGuard) {
     let mut adb_lock = ADB_MANAGER.lock().unwrap();
     let adb_manager = adb_lock.get_or_insert_with(AdbManager::default);
 
-    let mut apktool_lock = APKTOOL_MANAGER.lock().unwrap();
-    let apktool_manager = apktool_lock.get_or_insert_with(ApktoolManager::default);
+    let mut apkeditor_lock = APKTOOL_MANAGER.lock().unwrap();
+    let apkeditor_manager = apkeditor_lock.get_or_insert_with(ApkeditorManager::default);
 
     let mut avif_lock = AVIF_MANAGER.lock().unwrap();
     let avif_manager = avif_lock.get_or_insert_with(AvifManager::default);
@@ -135,7 +135,7 @@ fn handle_modals(ctx: &egui::Context, drag_guard: &mut DragGuard) {
     let ffmpeg_manager = ffmpeg_lock.get_or_insert_with(FfmpegManager::default);
 
     handle_delete_modal(ctx, drag_guard, "adb_delete", || adb_manager.uninstall());
-    handle_delete_modal(ctx, drag_guard, "apktool_delete", || apktool_manager.uninstall());
+    handle_delete_modal(ctx, drag_guard, "apkeditor_delete", || apkeditor_manager.uninstall());
     handle_delete_modal(ctx, drag_guard, "avif_delete", || avif_manager.uninstall());
     handle_delete_modal(ctx, drag_guard, "ffmpeg_delete", || ffmpeg_manager.uninstall());
 }

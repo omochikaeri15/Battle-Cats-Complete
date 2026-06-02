@@ -1,8 +1,7 @@
 use std::process::Command;
 use std::path::Path;
-use std::fs;
 use std::env;
-use crate::addons::apktool::download::{get_jar_path, get_apktool_dir, get_java_path};
+use crate::addons::apkeditor::download::{get_apkeditor_path, get_java_path};
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
@@ -14,7 +13,7 @@ fn execute_command(
 ) -> Result<(), String> {
     let mut command = Command::new(binary_path);
     command.args(arguments);
-
+    
     if let Some((key, value)) = env_vars {
         command.env(key, value);
     }
@@ -48,7 +47,7 @@ fn run_java_with_fallback(arguments: &[String], log_callback: &impl Fn(String)) 
         let current_path = env::var("PATH").unwrap_or_default();
         let separator = if cfg!(target_os = "windows") { ";" } else { ":" };
         let new_path = format!("{}{}{}", java_bin_dir.display(), separator, current_path);
-
+        
         if execute_command(&java_binary, arguments, Some(("PATH", new_path))).is_ok() {
             return Ok(());
         }
@@ -63,51 +62,24 @@ fn run_java_with_fallback(arguments: &[String], log_callback: &impl Fn(String)) 
     Ok(())
 }
 
-pub fn decode(apk_path: &Path, out_dir: &Path, log_callback: &impl Fn(String)) -> Result<(), String> {
-    let apktool_jar = get_jar_path().ok_or("apktool.jar is not installed.")?;
-
-    let safe_temp_dir = get_apktool_dir().join("tmp");
-    let _ = fs::create_dir_all(&safe_temp_dir);
+pub fn merge_xapk(input_xapk: &Path, output_apk: &Path, log_callback: &impl Fn(String)) -> Result<(), String> {
+    let editor_jar = get_apkeditor_path().ok_or("APKEditor.jar is not installed.")?;
 
     let arguments = vec![
-        format!("-Djava.io.tmpdir={}", safe_temp_dir.display()),
         "-jar".to_string(),
-        apktool_jar.to_string_lossy().to_string(),
-        "d".to_string(),
-        apk_path.to_string_lossy().to_string(),
+        editor_jar.to_string_lossy().to_string(),
+        "m".to_string(),
+        "-i".to_string(),
+        input_xapk.to_string_lossy().to_string(),
         "-o".to_string(),
-        out_dir.to_string_lossy().to_string(),
-        "-f".to_string(),
+        output_apk.to_string_lossy().to_string(),
     ];
 
     run_java_with_fallback(&arguments, log_callback)?;
-    Ok(())
-}
 
-pub fn build(decode_dir: &Path, out_apk: &Path, log_callback: &impl Fn(String)) -> Result<(), String> {
-    let apktool_jar = get_jar_path().ok_or("apktool.jar is not installed.")?;
-
-    let safe_temp_dir = get_apktool_dir().join("tmp");
-    let _ = fs::create_dir_all(&safe_temp_dir);
-
-    let aapt2_name = if cfg!(target_os = "windows") { "aapt2.exe" } else { "aapt2" };
-    let local_aapt2 = get_apktool_dir().join("bin").join(aapt2_name);
-
-    let mut arguments = vec![
-        format!("-Djava.io.tmpdir={}", safe_temp_dir.display()),
-        "-jar".to_string(),
-        apktool_jar.to_string_lossy().to_string(),
-        "b".to_string(),
-        decode_dir.to_string_lossy().to_string(),
-        "-o".to_string(),
-        out_apk.to_string_lossy().to_string(),
-    ];
-
-    if local_aapt2.exists() {
-        arguments.push("--aapt".to_string());
-        arguments.push(local_aapt2.to_string_lossy().to_string());
+    if !output_apk.exists() {
+        return Err("APKEditor executed successfully, but the output APK is missing.".to_string());
     }
 
-    run_java_with_fallback(&arguments, log_callback)?;
     Ok(())
 }

@@ -9,7 +9,7 @@ use crate::mods::logic::state::ModDataState;
 use crate::global::region::Region;
 use crate::data::utilities::keys;
 use crate::settings::logic::state::Settings;
-use crate::addons::apktool::xapk;
+use crate::addons::apkeditor::xapk;
 use crate::mods::export::{modify, sign, pack};
 use crate::mods::export::patch::{EVENT_RECEIVER, ExportEvent, spawn_log_adapter};
 
@@ -35,7 +35,7 @@ pub fn start_export(state: &mut ModDataState, settings: &Settings) {
     let (transmitter, receiver) = mpsc::channel();
     if let Ok(mut guard) = EVENT_RECEIVER.lock() { *guard = Some(receiver); }
 
-    let original_filename = input_apk_path.file_stem().and_then(|n| n.to_str()).unwrap_or("battlecats").to_string();
+    let original_filename = input_apk_path.file_stem().and_then(|name| name.to_str()).unwrap_or("battlecats").to_string();
 
     thread::spawn(move || {
         let string_transmitter = spawn_log_adapter(transmitter.clone());
@@ -62,7 +62,7 @@ pub fn start_export(state: &mut ModDataState, settings: &Settings) {
         let _ = fs::create_dir_all(&assets_dir);
 
         let mut working_apk = input_apk_path.clone();
-        let extension = input_apk_path.extension().and_then(|e| e.to_str()).unwrap_or("");
+        let extension = input_apk_path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
 
         // Handle Splits (XAPK/APKM)
         if extension == "xapk" || extension == "apkm" || extension == "apks" {
@@ -83,47 +83,49 @@ pub fn start_export(state: &mut ModDataState, settings: &Settings) {
         let mut extracted_arsc = false;
 
         let source_file = match fs::File::open(&working_apk) {
-            Ok(f) => f,
-            Err(e) => { let _ = transmitter.send(ExportEvent::Error(format!("Failed to open APK: {}", e))); return; }
+            Ok(file) => file,
+            Err(error) => { let _ = transmitter.send(ExportEvent::Error(format!("Failed to open APK: {}", error))); return; }
         };
 
         let mut archive = match ZipArchive::new(source_file) {
-            Ok(a) => a,
-            Err(e) => { let _ = transmitter.send(ExportEvent::Error(format!("Failed to read APK archive: {}", e))); return; }
+            Ok(archive_instance) => archive_instance,
+            Err(error) => { let _ = transmitter.send(ExportEvent::Error(format!("Failed to read APK archive: {}", error))); return; }
         };
 
-        for i in 0..archive.len() {
-            if let Ok(mut file) = archive.by_index(i) {
-                if file.name() == "AndroidManifest.xml" {
-                    if let Ok(mut out) = fs::File::create(&manifest_path) {
-                        let _ = std::io::copy(&mut file, &mut out);
-                    }
-                } else if file.name() == "resources.arsc" {
-                    if let Ok(mut out) = fs::File::create(&arsc_path) {
-                        let _ = std::io::copy(&mut file, &mut out);
-                        extracted_arsc = true;
-                    }
+        for index in 0..archive.len() {
+            let Ok(mut archive_file) = archive.by_index(index) else { continue; };
+            let file_name = archive_file.name();
+
+            if file_name == "AndroidManifest.xml" {
+                if let Ok(mut output_file) = fs::File::create(&manifest_path) {
+                    let _ = std::io::copy(&mut archive_file, &mut output_file);
+                }
+            } else if file_name == "resources.arsc" {
+                if let Ok(mut output_file) = fs::File::create(&arsc_path) {
+                    let _ = std::io::copy(&mut archive_file, &mut output_file);
+                    extracted_arsc = true;
                 }
             }
         }
         drop(archive);
 
-        let mut editor = match modify::ApkEditor::from_paths(&manifest_path, if extracted_arsc { Some(arsc_path.as_path()) } else { None }) {
-            Ok(ed) => ed,
-            Err(e) => { let _ = transmitter.send(ExportEvent::Error(format!("Failed to parse APK binaries: {}", e))); return; }
+        let mut apk_editor = match modify::ApkEditor::from_paths(&manifest_path, if extracted_arsc { Some(arsc_path.as_path()) } else { None }) {
+            Ok(editor) => editor,
+            Err(error) => { let _ = transmitter.send(ExportEvent::Error(format!("Failed to parse APK binaries: {}", error))); return; }
         };
 
         // Check current package
         let mut is_update = false;
         let target_package = format!("jp.co.ponos.battlecats{}", suffix.trim());
 
-        if let Some(root) = editor.manifest.root.get_element(&["manifest"], &editor.manifest.string_pool) {
-            if let Some(attr) = root.get_attribute("package", &editor.manifest.string_pool) {
-                if let ResValueType::String(ref s) = attr.typed_value.data {
-                    let current_pkg = s.resolve(&mut editor.manifest.string_pool).unwrap_or_default().to_string();
-                    if current_pkg == target_package {
-                        is_update = true;
-                    }
+        let root_elem = apk_editor.manifest.root.get_element(&["manifest"], &apk_editor.manifest.string_pool);
+        let pkg_attr = root_elem.and_then(|root| root.get_attribute("package", &apk_editor.manifest.string_pool));
+
+        if let Some(attr) = pkg_attr {
+            if let ResValueType::String(ref string_value) = attr.typed_value.data {
+                let current_pkg = string_value.resolve(&mut apk_editor.manifest.string_pool).unwrap_or_default().to_string();
+                if current_pkg == target_package {
+                    is_update = true;
                 }
             }
         }
@@ -136,15 +138,15 @@ pub fn start_export(state: &mut ModDataState, settings: &Settings) {
         } else {
             log_callback("New package identity found.".to_string());
             log_callback("Creating new APK...".to_string());
-            match editor.apply_patches(&suffix, &app_title) {
-                Ok(id) => {
-                    if let Err(e) = editor.save_to_paths(&manifest_path, if extracted_arsc { Some(arsc_path.as_path()) } else { None }) {
-                        let _ = transmitter.send(ExportEvent::Error(format!("Failed to save binaries: {}", e))); return;
+            match apk_editor.apply_patches(&suffix, &app_title) {
+                Ok(new_package_id) => {
+                    if let Err(error) = apk_editor.save_to_paths(&manifest_path, if extracted_arsc { Some(arsc_path.as_path()) } else { None }) {
+                        let _ = transmitter.send(ExportEvent::Error(format!("Failed to save binaries: {}", error))); return;
                     }
-                    id
+                    new_package_id
                 },
-                Err(e) => {
-                    let _ = transmitter.send(ExportEvent::Error(format!("Patch Error: {}", e))); return;
+                Err(error) => {
+                    let _ = transmitter.send(ExportEvent::Error(format!("Patch Error: {}", error))); return;
                 }
             }
         };
@@ -175,7 +177,7 @@ pub fn start_export(state: &mut ModDataState, settings: &Settings) {
             if is_update || !extracted_arsc { None } else { Some(arsc_path.as_path()) }
         ) {
             Ok(count) => log_callback(format!("Injected {} files.", count)),
-            Err(e) => { let _ = transmitter.send(ExportEvent::Error(format!("Build Error: {}", e))); return; }
+            Err(error) => { let _ = transmitter.send(ExportEvent::Error(format!("Build Error: {}", error))); return; }
         }
 
         // Normalize & Sign

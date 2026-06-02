@@ -4,4 +4,4 @@ pub mod ffmpeg;
 pub mod oem;
 pub mod toolpaths;
 pub mod manager;
-pub mod apktool;
+pub mod apkeditor;

@@ -40,7 +40,7 @@ pub fn show(context: &egui::Context, state: &mut ModListState, settings: &Settin
         .id(window_id)
         .open(&mut is_open)
         .resizable(true)
-        .default_size(egui::vec2(500.0, 400.0))
+        .default_size(egui::vec2(400.0, 300.0))
         .collapsible(false)
         .constrain(false)
         .movable(allow_drag);
@@ -148,7 +148,7 @@ fn show_apk_view(ui_container: &mut egui::Ui, state: &mut ModListState, settings
         enabled_ui.add_space(8.0);
 
         enabled_ui.horizontal(|ui_row| {
-            if ui_row.button("Select (X)APK").clicked() {
+            if ui_row.button("Select App File").clicked() {
                 let mut file_dialog = rfd::FileDialog::new();
                 file_dialog = file_dialog.add_filter("Android App", &["apk", "xapk", "apkm", "apks"]);
 
@@ -158,7 +158,25 @@ fn show_apk_view(ui_container: &mut egui::Ui, state: &mut ModListState, settings
             }
 
             if let Some(file_path) = &state.data.export.selected_apk {
-                ui_row.label(file_path.file_name().unwrap_or_default().to_string_lossy());
+                let file_name = file_path.file_name().unwrap_or_default().to_string_lossy().to_string();
+
+                let display_name = if file_name.chars().count() > 30 {
+                    let stem = file_path.file_stem().unwrap_or_default().to_string_lossy().to_string();
+                    let ext = file_path.extension().unwrap_or_default().to_string_lossy().to_string();
+                    let stem_chars: Vec<char> = stem.chars().collect();
+
+                    if stem_chars.len() > 15 {
+                        let first: String = stem_chars[..12].iter().collect();
+                        let last: String = stem_chars[stem_chars.len() - 5..].iter().collect();
+                        format!("{}...{}.{}", first, last, ext)
+                    } else {
+                        file_name
+                    }
+                } else {
+                    file_name
+                };
+
+                ui_row.label(display_name);
             } else {
                 ui_row.label("No file selected");
             }

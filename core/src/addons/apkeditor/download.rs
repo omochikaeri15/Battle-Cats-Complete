@@ -2,15 +2,15 @@ use std::path::PathBuf;
 use std::fs;
 use std::sync::mpsc::Receiver;
 
-use crate::addons::toolpaths::{get_tools_dir, AddonStatus, JAVA_BIN, APKTOOL_JAR, APKEDITOR_JAR};
+use crate::addons::toolpaths::{get_tools_dir, AddonStatus, JAVA_BIN, APKEDITOR_JAR};
 use crate::addons::manager::{self, DownloadConfig};
 
-pub struct ApktoolManager {
+pub struct ApkeditorManager {
     pub status: AddonStatus,
     rx: Option<Receiver<AddonStatus>>,
 }
 
-impl Default for ApktoolManager {
+impl Default for ApkeditorManager {
     fn default() -> Self {
         Self {
             status: if is_installed() { AddonStatus::Installed } else { AddonStatus::NotInstalled },
@@ -19,7 +19,7 @@ impl Default for ApktoolManager {
     }
 }
 
-impl ApktoolManager {
+impl ApkeditorManager {
     pub fn poll(&mut self) {
         if let Some(rx) = &self.rx {
             while let Ok(msg) = rx.try_recv() {
@@ -35,11 +35,11 @@ impl ApktoolManager {
         let asset_name = if cfg!(target_os = "windows") { "jre_win.zip" }
         else if cfg!(target_os = "macos") { "jre_mac.zip" }
         else { "jre_linux.zip" };
-        
+
         let bin_name = if cfg!(target_os = "windows") { "java.exe" } else { "java" };
 
         let config = DownloadConfig {
-            folder_name: "apktool".to_string(),
+            folder_name: "apkeditor".to_string(),
             asset_name: asset_name.to_string(),
             binary_name: bin_name.to_string(),
         };
@@ -49,7 +49,7 @@ impl ApktoolManager {
     }
 
     pub fn uninstall(&mut self) {
-        let dir = get_apktool_dir();
+        let dir = get_apkeditor_dir();
         if dir.exists() {
             let _ = fs::remove_dir_all(dir);
         }
@@ -57,25 +57,20 @@ impl ApktoolManager {
     }
 }
 
-pub fn get_apktool_dir() -> PathBuf {
-    get_tools_dir().join("apktool")
+pub fn get_apkeditor_dir() -> PathBuf {
+    get_tools_dir().join("apkeditor")
 }
 
 pub fn get_java_path() -> Option<PathBuf> {
-    let bin = get_apktool_dir().join(JAVA_BIN);
+    let bin = get_apkeditor_dir().join(JAVA_BIN);
     if bin.exists() { Some(bin) } else { None }
 }
 
-pub fn get_jar_path() -> Option<PathBuf> {
-    let jar = get_apktool_dir().join(APKTOOL_JAR);
-    if jar.exists() { Some(jar) } else { None }
-}
-
 pub fn get_apkeditor_path() -> Option<PathBuf> {
-    let jar = get_apktool_dir().join(APKEDITOR_JAR);
+    let jar = get_apkeditor_dir().join(APKEDITOR_JAR);
     if jar.exists() { Some(jar) } else { None }
 }
 
 pub fn is_installed() -> bool {
-    get_jar_path().is_some() && get_apkeditor_path().is_some()
+    get_apkeditor_path().is_some()
 }

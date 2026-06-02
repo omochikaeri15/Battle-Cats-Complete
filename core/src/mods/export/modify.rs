@@ -29,12 +29,12 @@ pub struct ApkEditor {
 impl ApkEditor {
     pub fn from_paths(manifest_path: &Path, table_path: Option<&Path>) -> Result<Self, ResError> {
         let manifest = XMLTree::read(&mut fs::File::open(manifest_path)?)
-            .map_err(|e| ResError::Manifest(e.to_string()))?;
+            .map_err(|error| ResError::Manifest(error.to_string()))?;
 
         let res_table = match table_path {
             Some(path) if path.exists() => {
                 Some(ResTable::read_all(&mut fs::File::open(path)?)
-                    .map_err(|e| ResError::Manifest(e.to_string()))?)
+                    .map_err(|error| ResError::Manifest(error.to_string()))?)
             }
             _ => None,
         };
@@ -44,11 +44,11 @@ impl ApkEditor {
 
     pub fn save_to_paths(self, manifest_path: &Path, table_path: Option<&Path>) -> Result<(), ResError> {
         self.manifest.write(&mut fs::File::create(manifest_path)?)
-            .map_err(|e| ResError::Manifest(e.to_string()))?;
+            .map_err(|error| ResError::Manifest(error.to_string()))?;
 
         if let (Some(path), Some(table)) = (table_path, self.res_table) {
             table.write_all(&mut fs::File::create(path)?)
-                .map_err(|e| ResError::Manifest(e.to_string()))?;
+                .map_err(|error| ResError::Manifest(error.to_string()))?;
         }
         Ok(())
     }
@@ -64,9 +64,8 @@ impl ApkEditor {
 
         // Scrub existing attributes to prevent XML duplicates
         root.element.attributes.retain(|attr| {
-            if let Some(name) = attr.name.resolve(&self.manifest.string_pool) {
-                name != "split" && name != "isFeatureSplit"
-            } else { true }
+            let Some(name) = attr.name.resolve(&self.manifest.string_pool) else { return true; };
+            name != "split" && name != "isFeatureSplit"
         });
 
         // Inject the clean, false split flag
@@ -82,7 +81,7 @@ impl ApkEditor {
             .ok_or(ResError::MissingElement("package attribute"))?;
 
         let original_package = match package_attr.typed_value.data {
-            ResValueType::String(ref s) => s.resolve(&mut self.manifest.string_pool).unwrap_or_default().to_string(),
+            ResValueType::String(ref string_value) => string_value.resolve(&mut self.manifest.string_pool).unwrap_or_default().to_string(),
             _ => return Err(ResError::MissingElement("Invalid package string format")),
         };
 
@@ -105,25 +104,20 @@ impl ApkEditor {
 
             // Scrub Application attributes to prevent XML duplicates
             app_elem.element.attributes.retain(|attr| {
-                if let Some(name) = attr.name.resolve(&self.manifest.string_pool) {
-                    name != "extractNativeLibs" && name != "isSplitRequired"
-                } else { true }
+                let Some(name) = attr.name.resolve(&self.manifest.string_pool) else { return true; };
+                name != "extractNativeLibs" && name != "isSplitRequired"
             });
 
             // Strip Google Play Vending splits metadata
             app_elem.children.retain(|child| {
-                if child.element.name.resolve(&self.manifest.string_pool) == Some("meta-data") {
-                    if let Some(name_attr) = child.get_attribute("name", &self.manifest.string_pool) {
-                        if let ResValueType::String(ref s) = name_attr.typed_value.data {
-                            if let Some(val) = s.resolve(&self.manifest.string_pool) {
-                                if val.contains("vending.splits") || val.contains("vending.derived.apk.id") {
-                                    return false;
-                                }
-                            }
-                        }
-                    }
-                }
-                true
+                let is_metadata = child.element.name.resolve(&self.manifest.string_pool) == Some("meta-data");
+                if !is_metadata { return true; }
+
+                let Some(name_attr) = child.get_attribute("name", &self.manifest.string_pool) else { return true; };
+                let ResValueType::String(ref string_value) = name_attr.typed_value.data else { return true; };
+                let Some(resolved_val) = string_value.resolve(&self.manifest.string_pool) else { return true; };
+
+                !(resolved_val.contains("vending.splits") || resolved_val.contains("vending.derived.apk.id"))
             });
 
             app_elem.insert_attribute(
@@ -178,38 +172,34 @@ fn replace_package_refs(
     let attrs_to_check = ["name", "authorities", "taskAffinity", "sharedUserId", "value", "scheme", "host"];
 
     for attr_name in attrs_to_check {
-        if let Some(attr) = elem.get_attribute_mut(attr_name, pool) {
-            let mut resolved_str: Option<String> = None;
+        let Some(attr) = elem.get_attribute_mut(attr_name, pool) else { continue; };
 
-            match attr.typed_value.data {
-                ResValueType::String(ref s) => {
-                    if let Some(val) = s.resolve(pool) {
-                        resolved_str = Some(val.to_string());
-                    }
-                },
-                ResValueType::Reference(ref table_ref) => {
-                    if let Some(table) = res_table {
-                        if let Some(package) = table.packages.first() {
-                            if let Some(res_val) = package.resolve_ref(*table_ref) {
-                                if let ResTableEntryValue::ResValue(ref val) = res_val.data {
-                                    if let ResValueType::String(ref string_ref) = val.data.data {
-                                        if let Some(val_str) = string_ref.resolve(&table.string_pool) {
-                                            resolved_str = Some(val_str.to_string());
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                _ => {}
-            }
+        let mut resolved_str: Option<String> = None;
 
-            if let Some(val_str) = resolved_str {
-                if val_str.contains(old_pkg) {
-                    let new_val = val_str.replace(old_pkg, new_pkg);
-                    attr.write_string(new_val.into(), pool);
+        match attr.typed_value.data {
+            ResValueType::String(ref string_value) => {
+                if let Some(resolved_val) = string_value.resolve(pool) {
+                    resolved_str = Some(resolved_val.to_string());
                 }
+            },
+            ResValueType::Reference(ref table_reference) => {
+                resolved_str = (|| -> Option<String> {
+                    let table = res_table?;
+                    let package = table.packages.first()?;
+                    let resource_value = package.resolve_ref(*table_reference)?;
+                    let ResTableEntryValue::ResValue(ref val) = resource_value.data else { return None; };
+                    let ResValueType::String(ref string_reference) = val.data.data else { return None; };
+                    let resolved_string = string_reference.resolve(&table.string_pool)?;
+                    Some(resolved_string.to_string())
+                })();
+            },
+            _ => {}
+        }
+
+        if let Some(resolved_string) = resolved_str {
+            if resolved_string.contains(old_pkg) {
+                let new_val = resolved_string.replace(old_pkg, new_pkg);
+                attr.write_string(new_val.into(), pool);
             }
         }
     }
@@ -228,10 +218,10 @@ pub fn inject_and_build_apk(
     patched_manifest: Option<&Path>,
     patched_arsc: Option<&Path>,
 ) -> Result<usize, String> {
-    let source_file = fs::File::open(source_apk).map_err(|e| e.to_string())?;
-    let mut archive = ZipArchive::new(source_file).map_err(|e| e.to_string())?;
+    let source_file = fs::File::open(source_apk).map_err(|error| error.to_string())?;
+    let mut archive = ZipArchive::new(source_file).map_err(|error| error.to_string())?;
 
-    let destination_file = fs::File::create(output_apk).map_err(|e| e.to_string())?;
+    let destination_file = fs::File::create(output_apk).map_err(|error| error.to_string())?;
     let mut zip_writer = ZipWriter::new(destination_file);
 
     let mut injected_count = 0;
@@ -241,7 +231,8 @@ pub fn inject_and_build_apk(
     if patched_arsc.is_some() { files_to_inject.insert("resources.arsc".to_string()); }
 
     if assets_dir.exists() {
-        for entry in fs::read_dir(assets_dir).unwrap().flatten() {
+        let entries = fs::read_dir(assets_dir).map_err(|error| error.to_string())?;
+        for entry in entries.flatten() {
             if entry.path().is_file() {
                 files_to_inject.insert(format!("assets/{}", entry.file_name().to_string_lossy()));
             }
@@ -249,7 +240,8 @@ pub fn inject_and_build_apk(
     }
 
     if loose_dir.exists() {
-        for entry in fs::read_dir(loose_dir).unwrap().flatten() {
+        let entries = fs::read_dir(loose_dir).map_err(|error| error.to_string())?;
+        for entry in entries.flatten() {
             if entry.path().is_file() {
                 files_to_inject.insert(format!("assets/{}", entry.file_name().to_string_lossy()));
             }
@@ -263,7 +255,7 @@ pub fn inject_and_build_apk(
     let mut existing_res_folders = HashSet::new();
 
     for index in 0..archive.len() {
-        let archive_file = archive.by_index(index).unwrap();
+        let archive_file = archive.by_index(index).map_err(|error| error.to_string())?;
         let file_name = archive_file.name().to_string();
 
         let upper_name = file_name.to_ascii_uppercase();
@@ -288,18 +280,18 @@ pub fn inject_and_build_apk(
             if short_name == "push_icon.png" && has_custom_push { continue; }
         }
 
-        zip_writer.raw_copy_file(archive_file).map_err(|e| e.to_string())?;
+        zip_writer.raw_copy_file(archive_file).map_err(|error| error.to_string())?;
     }
 
     let mut inject_file = |local_path: &Path, zip_path: &str, store: bool| -> Result<(), String> {
         if !local_path.exists() { return Ok(()); }
 
-        let file_data = fs::read(local_path).map_err(|e| e.to_string())?;
+        let file_data = fs::read(local_path).map_err(|error| error.to_string())?;
         let compression = if store { zip::CompressionMethod::Stored } else { zip::CompressionMethod::Deflated };
         let options = zip::write::SimpleFileOptions::default().compression_method(compression);
 
-        zip_writer.start_file(zip_path, options).map_err(|e| e.to_string())?;
-        zip_writer.write_all(&file_data).map_err(|e| e.to_string())?;
+        zip_writer.start_file(zip_path, options).map_err(|error| error.to_string())?;
+        zip_writer.write_all(&file_data).map_err(|error| error.to_string())?;
         injected_count += 1;
         Ok(())
     };
@@ -308,7 +300,8 @@ pub fn inject_and_build_apk(
     if let Some(arsc) = patched_arsc { inject_file(arsc, "resources.arsc", true)?; }
 
     if assets_dir.exists() {
-        for entry in fs::read_dir(assets_dir).unwrap().flatten() {
+        let entries = fs::read_dir(assets_dir).map_err(|error| error.to_string())?;
+        for entry in entries.flatten() {
             if entry.path().is_file() {
                 let name = entry.file_name().to_string_lossy().to_string();
                 let store = name.ends_with(".pack") || name.ends_with(".list");
@@ -318,7 +311,8 @@ pub fn inject_and_build_apk(
     }
 
     if loose_dir.exists() {
-        for entry in fs::read_dir(loose_dir).unwrap().flatten() {
+        let entries = fs::read_dir(loose_dir).map_err(|error| error.to_string())?;
+        for entry in entries.flatten() {
             if entry.path().is_file() {
                 let name = entry.file_name().to_string_lossy().to_string();
                 inject_file(&entry.path(), &format!("assets/{}", name), true)?;
@@ -337,44 +331,44 @@ pub fn inject_and_build_apk(
             if !exists { continue; }
 
             let source_path = icons_dir.join(file_name);
-            if let Ok(source_image) = image::open(&source_path) {
-                let target_resolutions = vec![
-                    ("drawable-xxxhdpi", xxxhdpi),
-                    ("drawable-xxhdpi", xxhdpi),
-                    ("drawable-xhdpi", xhdpi),
-                    ("drawable-xxxhdpi-v4", xxxhdpi),
-                    ("drawable-xxhdpi-v4", xxhdpi),
-                    ("drawable-xhdpi-v4", xhdpi),
-                    ("mipmap-xxxhdpi", xxxhdpi),
-                    ("mipmap-xxhdpi", xxhdpi),
-                    ("mipmap-xhdpi", xhdpi),
-                    ("mipmap-xxxhdpi-v4", xxxhdpi),
-                    ("mipmap-xxhdpi-v4", xxhdpi),
-                    ("mipmap-xhdpi-v4", xhdpi),
-                ];
+            let Ok(source_image) = image::open(&source_path) else { continue; };
 
-                for (folder, size) in target_resolutions {
-                    let res_folder = format!("res/{}", folder);
+            let target_resolutions = vec![
+                ("drawable-xxxhdpi", xxxhdpi),
+                ("drawable-xxhdpi", xxhdpi),
+                ("drawable-xhdpi", xhdpi),
+                ("drawable-xxxhdpi-v4", xxxhdpi),
+                ("drawable-xxhdpi-v4", xxhdpi),
+                ("drawable-xhdpi-v4", xhdpi),
+                ("mipmap-xxxhdpi", xxxhdpi),
+                ("mipmap-xxhdpi", xxhdpi),
+                ("mipmap-xhdpi", xhdpi),
+                ("mipmap-xxxhdpi-v4", xxxhdpi),
+                ("mipmap-xxhdpi-v4", xxhdpi),
+                ("mipmap-xhdpi-v4", xhdpi),
+            ];
 
-                    if !existing_res_folders.contains(&res_folder) { continue; }
+            for (folder, size) in target_resolutions {
+                let res_folder = format!("res/{}", folder);
 
-                    let zip_path = format!("{}/{}", res_folder, file_name);
-                    let scaled_image = source_image.resize_exact(size, size, image::imageops::FilterType::Lanczos3);
+                if !existing_res_folders.contains(&res_folder) { continue; }
 
-                    let mut cursor = Cursor::new(Vec::new());
-                    if scaled_image.write_to(&mut cursor, image::ImageFormat::Png).is_ok() {
-                        let options = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
-                        if zip_writer.start_file(&zip_path, options).is_ok() {
-                            let _ = zip_writer.write_all(&cursor.into_inner());
-                            injected_count += 1;
-                        }
-                    }
-                }
+                let zip_path = format!("{}/{}", res_folder, file_name);
+                let scaled_image = source_image.resize_exact(size, size, image::imageops::FilterType::Lanczos3);
+
+                let mut cursor = Cursor::new(Vec::new());
+                if scaled_image.write_to(&mut cursor, image::ImageFormat::Png).is_err() { continue; };
+
+                let options = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+                if zip_writer.start_file(&zip_path, options).is_err() { continue; };
+
+                let _ = zip_writer.write_all(&cursor.into_inner());
+                injected_count += 1;
             }
         }
     }
 
-    zip_writer.finish().map_err(|e| e.to_string())?;
+    zip_writer.finish().map_err(|error| error.to_string())?;
     Ok(injected_count)
 }
 
@@ -383,7 +377,7 @@ pub fn normalize_apk(input_apk: &Path, output_apk: &Path, original_apk: &Path) -
 
     let original_file = fs::File::open(original_apk).map_err(|error| format!("Failed to open original APK: {}", error))?;
     let mut original_archive = ZipArchive::new(original_file).map_err(|error| format!("Failed to read original APK: {}", error))?;
-    
+
     for index in 0..original_archive.len() {
         let archive_file = original_archive.by_index(index).map_err(|error| error.to_string())?;
         if archive_file.compression() == zip::CompressionMethod::Stored {
@@ -400,7 +394,7 @@ pub fn normalize_apk(input_apk: &Path, output_apk: &Path, original_apk: &Path) -
     let uncompressed_extensions = ["dex", "arsc", "so", "pack", "list", "ogg"];
 
     for index in 0..archive.len() {
-        let mut archive_file = archive.by_index(index).unwrap();
+        let mut archive_file = archive.by_index(index).map_err(|error| error.to_string())?;
         let file_name = archive_file.name().to_string();
         let file_extension = Path::new(&file_name).extension().and_then(|extension_str| extension_str.to_str()).unwrap_or("");
 
