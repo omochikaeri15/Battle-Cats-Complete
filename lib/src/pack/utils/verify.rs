@@ -6,7 +6,7 @@
 ///
 /// # Returns
 /// Returns `true` if the data matches the expected format, `false` otherwise.
-pub fn is_valid(data: &[u8], filename: &str) -> bool {
+pub fn check_integrity(data: &[u8], filename: &str) -> bool {
     let lower_name = filename.to_lowercase();
 
     if lower_name.ends_with(".png") {

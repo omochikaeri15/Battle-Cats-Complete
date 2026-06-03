@@ -3,7 +3,7 @@ use crate::pack::utils::ciphers::{
     encrypt_cbc, encrypt_ecb,
     get_md5_key
 };
-use crate::pack::utils::verify;
+pub use crate::pack::utils::verify::check_integrity;
 use std::fmt;
 use std::error::Error;
 
@@ -143,7 +143,7 @@ pub fn decrypt_chunk(
 
     for cipher in &keys.ciphers {
         if let Ok(result) = decrypt_cbc(data, &cipher.key, &cipher.iv) {
-            if verify::is_valid(&result, internal_filename) {
+            if check_integrity(&result, internal_filename) {
                 return (result, Some(cipher.region));
             }
         }
@@ -151,7 +151,7 @@ pub fn decrypt_chunk(
 
     let server_key = get_md5_key("battlecats");
     if let Ok(result) = decrypt_ecb(data, &server_key) {
-        if verify::is_valid(&result, internal_filename) {
+        if check_integrity(&result, internal_filename) {
             return (result, None);
         }
     }
