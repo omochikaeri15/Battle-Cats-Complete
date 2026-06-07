@@ -3,6 +3,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::fs::{self, File};
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
+use std::io::{BufReader, BufWriter};
 use rayon::prelude::*;
 use rustc_hash::FxHasher;
 use bincode::Options;
@@ -82,12 +83,13 @@ pub fn load_with_hash<T: DeserializeOwned>(filename: &str) -> Option<(u64, T)> {
         Ok(f) => f,
         Err(_) => return None,
     };
-    
+
+    let reader = BufReader::new(cache_file);
+
     let options = bincode::DefaultOptions::new()
         .with_limit(1024 * 1024 * 100);
 
-    // Use the options to deserialize, replacing the old blind call
-    match options.deserialize_from::<_, CachePayload<T>>(cache_file) {
+    match options.deserialize_from::<_, CachePayload<T>>(reader) {
         Ok(payload) => Some((payload.hash, payload.data)),
         Err(_) => {
             let _ = fs::remove_file(&cache_path);
@@ -98,9 +100,22 @@ pub fn load_with_hash<T: DeserializeOwned>(filename: &str) -> Option<(u64, T)> {
 
 pub fn save<T: Serialize>(filename: &str, hash: u64, data: &T) {
     if let Some(cache_directory) = get_cache_dir() {
-        let payload = CachePayload { hash, data };
-        if let Ok(cache_file) = File::create(cache_directory.join(filename)) {
-            let _ = bincode::serialize_into(cache_file, &payload);
+        let target_path = cache_directory.join(filename);
+        let tmp_path = target_path.with_extension("tmp");
+
+        if let Ok(cache_file) = File::create(&tmp_path) {
+            let mut writer = BufWriter::new(cache_file);
+            let payload = CachePayload { hash, data };
+            let options = bincode::DefaultOptions::new()
+                .with_limit(1024 * 1024 * 100);
+
+            if options.serialize_into(&mut writer, &payload).is_ok() {
+                if writer.into_inner().is_ok() {
+                    let _ = fs::rename(&tmp_path, &target_path);
+                }
+            } else {
+                let _ = fs::remove_file(&tmp_path);
+            }
         }
     }
 }
