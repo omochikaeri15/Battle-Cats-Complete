@@ -143,7 +143,7 @@ pub fn show(ctx: &egui::Context, state: &mut CatListState, settings: &mut Settin
                             if is_legend_rare {
                                 state.data.current_level = 50;
                                 state.data.level_input = "50".to_string();
-                            } else if base_max == 1 || (plus_max >= 5 && plus_max <= 65) || is_normal_rare {
+                            } else if base_max == 1 || (5..=65).contains(&plus_max) || is_normal_rare {
                                 state.data.current_level = base_max + plus_max;
                                 if plus_max > 0 {
                                     state.data.level_input = format!("{}+{}", base_max, plus_max);
@@ -217,21 +217,18 @@ pub fn show(ctx: &egui::Context, state: &mut CatListState, settings: &mut Settin
         );
 
         let mut current_ultra_state = state.data.selected_form == 3;
-        if state.data.selected_form >= 2 {
-            if let Some(levels) = state.data.talent_levels.get(&selected_id) {
+        if state.data.selected_form >= 2
+            && let Some(levels) = state.data.talent_levels.get(&selected_id) {
                 if let Some(t_data) = &cat_entry.talent_data {
                     for (idx, group) in t_data.groups.iter().enumerate() {
-                        if group.limit == 1 {
-                            if let Some(&lvl) = levels.get(&(idx as u8)) {
-                                if lvl > 0 { current_ultra_state = true; break; }
-                            }
-                        }
+                        if group.limit == 1
+                            && let Some(&lvl) = levels.get(&(idx as u8))
+                                && lvl > 0 { current_ultra_state = true; break; }
                     }
                 } else if levels.iter().any(|(&idx, &lvl)| idx >= 5 && lvl > 0) {
                     current_ultra_state = true;
                 }
             }
-        }
 
         if settings.cat_data.bump_ultra_60 {
             if !state.data.is_in_ultra_state && current_ultra_state {
@@ -240,15 +237,14 @@ pub fn show(ctx: &egui::Context, state: &mut CatListState, settings: &mut Settin
                     state.data.current_level = 60;
                     state.data.level_input = "60".to_string();
                 }
-            } else if state.data.is_in_ultra_state && !current_ultra_state {
-                if let Some((saved_lvl, saved_str)) = state.data.saved_pre_ultra_level.take() {
+            } else if state.data.is_in_ultra_state && !current_ultra_state
+                && let Some((saved_lvl, saved_str)) = state.data.saved_pre_ultra_level.take() {
                     let expected_ultra_level = if saved_lvl < 60 { 60 } else { saved_lvl };
                     if state.data.current_level == expected_ultra_level {
                         state.data.current_level = saved_lvl;
                         state.data.level_input = saved_str;
                     }
                 }
-            }
             state.data.is_in_ultra_state = current_ultra_state;
         } else {
             state.data.is_in_ultra_state = current_ultra_state;

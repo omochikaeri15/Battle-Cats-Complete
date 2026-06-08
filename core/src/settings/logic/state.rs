@@ -18,17 +18,11 @@ pub struct Settings {
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(default)]
+#[derive(Default)]
 pub struct ModsSettings {
     pub replace_on_update: bool,
 }
 
-impl Default for ModsSettings {
-    fn default() -> Self {
-        Self {
-            replace_on_update: false,
-        }
-    }
-}
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(default)]
@@ -75,17 +69,11 @@ impl Default for CatDataSettings {
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(default)]
+#[derive(Default)]
 pub struct EnemyDataSettings {
     pub show_invalid_enemies: bool,
 }
 
-impl Default for EnemyDataSettings {
-    fn default() -> Self {
-        Self {
-            show_invalid_enemies: false,
-        }
-    }
-}
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(default)]

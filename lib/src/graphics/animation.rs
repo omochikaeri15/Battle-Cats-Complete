@@ -87,11 +87,10 @@ impl Unit {
                 return None;
             }
 
-            if let Some(maximum) = maximum_frame {
-                if current_frame > maximum as usize {
+            if let Some(maximum) = maximum_frame
+                && current_frame > maximum as usize {
                     return None;
                 }
-            }
 
             let frame_float = current_frame as f32;
             let _ = timeline::animate(&self.model, animation, frame_float, &mut state_buffer);

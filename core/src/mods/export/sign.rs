@@ -75,8 +75,7 @@ impl Signer {
         let public_key = private_key.to_public_key();
 
         let base64_certificate = &pem_string[cert_start_index + cert_start_tag.len()..cert_end_index]
-            .replace('\n', "")
-            .replace('\r', "");
+            .replace(['\n', '\r'], "");
 
         let raw_der_bytes = BASE64_STANDARD.decode(base64_certificate).context("Failed to base64 decode certificate")?;
         let certificate_der = rasn::der::decode::<Certificate>(&raw_der_bytes)

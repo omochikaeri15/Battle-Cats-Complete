@@ -19,7 +19,7 @@ pub fn show(context: &egui::Context, state: &mut ModListState, settings: &Settin
         context.data_mut(|data_map| data_map.insert_temp(tracking_mod_id, current_mod.clone()));
 
         if let Some(mod_folder) = &state.data.selected_mod {
-            let metadata = metadata::ModMetadata::load(&std::path::Path::new("mods").join(mod_folder));
+            let metadata = metadata::ModMetadata::load(std::path::Path::new("mods").join(mod_folder));
             state.data.export.app_title = metadata.title;
             state.data.export.package_suffix = metadata.package;
         } else {

@@ -7,7 +7,7 @@ use nyanko::cat::unit::UnitBuy;
 pub fn load_unitbuy(cats_directory: &Path, priority: &[String]) -> HashMap<u32, UnitBuy> {
     let mut map = HashMap::new();
 
-    let Some(file_path) = crate::global::resolver::get(cats_directory, &[paths::UNIT_BUY], priority).into_iter().next() else {
+    let Some(file_path) = crate::global::resolver::get(cats_directory, [paths::UNIT_BUY], priority).into_iter().next() else {
         return map;
     };
 

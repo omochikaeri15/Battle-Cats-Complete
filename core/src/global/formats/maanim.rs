@@ -119,9 +119,8 @@ impl Animation {
 
         let mut max_len = 0;
         for curve in &curves {
-            if let Some(last_keyframe) = curve.keyframes.last() {
-                if last_keyframe.frame > max_len { max_len = last_keyframe.frame; }
-            }
+            if let Some(last_keyframe) = curve.keyframes.last()
+                && last_keyframe.frame > max_len { max_len = last_keyframe.frame; }
         }
 
         Some(Self { curves, max_frame: max_len })
@@ -136,15 +135,14 @@ impl Animation {
                 return None;
             }
 
-            if curve.loop_count != 1 {
-                if let (Some(first_keyframe), Some(last_keyframe)) = (curve.keyframes.first(), curve.keyframes.last()) {
-                    let duration = (last_keyframe.frame - first_keyframe.frame) as i32;
+            if curve.loop_count != 1
+                && let (Some(first_keyframe), Some(last_keyframe)) = (curve.keyframes.first(), curve.keyframes.last()) {
+                    let duration = (last_keyframe.frame - first_keyframe.frame);
                     if duration > 0 {
                         overall_lcm = lcm(overall_lcm as i32, duration);
                         found_looping_part = true;
                     }
                 }
-            }
         }
 
         if !found_looping_part {
@@ -173,7 +171,7 @@ impl Animation {
 
             let following_lines_count = maanim_lines
                 .get(line_index + 1)
-                .and_then(|line| line.get(0))
+                .and_then(|line| line.first())
                 .cloned()
                 .unwrap_or(0) as usize;
 
@@ -181,13 +179,13 @@ impl Animation {
 
             let first_frame = maanim_lines
                 .get(line_index + 2)
-                .and_then(|line| line.get(0))
+                .and_then(|line| line.first())
                 .cloned()
                 .unwrap_or(0);
 
             let last_frame = maanim_lines
                 .get(line_index + following_lines_count + 1)
-                .and_then(|line| line.get(0))
+                .and_then(|line| line.first())
                 .cloned()
                 .unwrap_or(0);
 

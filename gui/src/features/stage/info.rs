@@ -56,7 +56,7 @@ fn format_crown_display(target_crowns: i8, max_crowns: u8) -> String {
 
 fn format_base_display(anim_base_id: u32, standard_base_id: i32) -> (String, String) {
     if anim_base_id != 0 {
-        let calculated_enemy_id = if anim_base_id >= 2 { anim_base_id - 2 } else { 0 };
+        let calculated_enemy_id = anim_base_id.saturating_sub(2);
         return ("Anim Base".to_string(), format!("E-{:03}", calculated_enemy_id));
     }
     ("Base Img".to_string(), standard_base_id.to_string())
@@ -104,13 +104,11 @@ fn get_cpu_skip_status(
 ) -> String {
     let global_map_id = map_name::get_global_map_id(category, map_id);
 
-    if let Some(mid) = global_map_id {
-        if let Some(entry) = lock_registry.get(&mid) {
-            if entry.excluded_map_id == mid {
+    if let Some(mid) = global_map_id
+        && let Some(entry) = lock_registry.get(&mid)
+            && entry.excluded_map_id == mid {
                 return "N/A".to_string();
             }
-        }
-    }
 
     if cpu_setting.super_cpu_consume_amount > 0 {
         return format!("{} CPUs", cpu_setting.super_cpu_consume_amount);
@@ -183,21 +181,19 @@ pub fn draw(
     if !texture_cache.contains_key(&map_img_key) {
         let possible_files = get_map_image_filenames(stage_data.map_id, &stage_data.category, lang_priority);
         let refs: Vec<&str> = possible_files.iter().map(|s| s.as_str()).collect();
-        if let Some(resolved_path) = resolver::get(&map_dir, &refs, lang_priority).first() {
-            if let Some(color_img) = process_texture(resolved_path) {
+        if let Some(resolved_path) = resolver::get(&map_dir, &refs, lang_priority).first()
+            && let Some(color_img) = process_texture(resolved_path) {
                 texture_cache.insert(map_img_key.clone(), egui_context.load_texture(&map_img_key, color_img, egui::TextureOptions::LINEAR));
             }
-        }
     }
 
     if !texture_cache.contains_key(&stage_img_key) {
         let possible_files = get_stage_image_filenames(stage_data.map_id, stage_data.stage_id, &stage_data.category, lang_priority);
         let refs: Vec<&str> = possible_files.iter().map(|s| s.as_str()).collect();
-        if let Some(resolved_path) = resolver::get(&stage_dir, &refs, lang_priority).first() {
-            if let Some(color_img) = process_texture(resolved_path) {
+        if let Some(resolved_path) = resolver::get(&stage_dir, &refs, lang_priority).first()
+            && let Some(color_img) = process_texture(resolved_path) {
                 texture_cache.insert(stage_img_key.clone(), egui_context.load_texture(&stage_img_key, color_img, egui::TextureOptions::LINEAR));
             }
-        }
     }
 
     let mut map_width = 0.0;

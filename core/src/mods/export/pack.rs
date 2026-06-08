@@ -27,7 +27,7 @@ pub fn start_pack_export(state: &mut ModDataState) {
     } else {
         state.export.pack_name.clone()
     };
-    let target_region = state.export.target_region.clone();
+    let target_region = state.export.target_region;
 
     let (transmitter, receiver) = mpsc::channel();
     if let Ok(mut guard) = EVENT_RECEIVER.lock() { *guard = Some(receiver); }
@@ -81,11 +81,10 @@ pub fn stream_pack_and_list(
     if let Ok(entries) = fs::read_dir(source_dir) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.is_file() {
-                if let Ok(metadata) = fs::metadata(&path) {
+            if path.is_file()
+                && let Ok(metadata) = fs::metadata(&path) {
                     files_with_size.push((path, metadata.len() as usize));
                 }
-            }
         }
     }
 
@@ -139,7 +138,7 @@ pub fn stream_pack_and_list(
             log_callback(format!("Packed {} files | Streaming: {}", index, filename));
         }
 
-        let mut file_data = fs::read(&file_path).map_err(|error| format!("Failed to read {}: {}", filename, error))?;
+        let mut file_data = fs::read(file_path).map_err(|error| format!("Failed to read {}: {}", filename, error))?;
 
         let (cipher_key, cipher_iv) = match &standard_keys {
             Some((key_array, iv_array)) => (Some(key_array), Some(iv_array)),

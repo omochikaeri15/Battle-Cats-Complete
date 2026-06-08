@@ -64,11 +64,10 @@ pub fn update_data(state: &mut CatDataState) {
     if is_done {
         state.cats.retain(|c| state.active_scan_ids.contains(&c.id));
 
-        if let Some(sel) = state.selected_cat {
-            if !state.active_scan_ids.contains(&sel) {
+        if let Some(sel) = state.selected_cat
+            && !state.active_scan_ids.contains(&sel) {
                 state.selected_cat = None;
             }
-        }
 
         state.scan_receiver = None;
     }

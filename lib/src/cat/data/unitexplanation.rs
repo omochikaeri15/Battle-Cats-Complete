@@ -41,7 +41,7 @@ fn parse_inner(bytes: &[u8]) -> Result<UnitExplanation, UnitExplanationError> {
     for (line_index, file_line) in file_content.lines().enumerate().take(4) {
         let parts: Vec<&str> = file_line.split(separator_char).collect();
 
-        if let Some(name_part) = parts.get(0) {
+        if let Some(name_part) = parts.first() {
             let trimmed_name = name_part.trim();
 
             // Domain Rule: Clean up PONOS text encoding quirks

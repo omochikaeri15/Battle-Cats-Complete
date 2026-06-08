@@ -12,7 +12,7 @@ pub struct ScatCpuSetting {
 
 pub fn load(dir_path: &Path, filename: &str, lang_priority: &[String]) -> ScatCpuSetting {
     let mut setting = ScatCpuSetting::default();
-    let file_paths = resolver::get(dir_path, &[filename], lang_priority);
+    let file_paths = resolver::get(dir_path, [filename], lang_priority);
     let Some(first_path) = file_paths.first() else { return setting; };
     let Ok(file_content) = fs::read_to_string(first_path) else { return setting; };
     

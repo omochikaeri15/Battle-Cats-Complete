@@ -25,20 +25,18 @@ pub fn run(
         let _ = fs::create_dir_all(&raw_directory_path); 
     }
 
-    if let (Ok(source_canonical), Ok(raw_canonical)) = (source_path.canonicalize(), raw_directory_path.canonicalize()) {
-        if source_canonical == raw_canonical {
+    if let (Ok(source_canonical), Ok(raw_canonical)) = (source_path.canonicalize(), raw_directory_path.canonicalize())
+        && source_canonical == raw_canonical {
             let _ = status_sender.send("Organizing recognized raw data.".to_string());
             return sort_raw_folder(&raw_directory_path, game_root_path, &status_sender, &abort_flag, &progress_current, &progress_maximum);
         }
-    }
 
-    if let (Ok(source_canonical), Ok(game_canonical)) = (source_path.canonicalize(), game_root_path.canonicalize()) {
-        if source_canonical == game_canonical {
+    if let (Ok(source_canonical), Ok(game_canonical)) = (source_path.canonicalize(), game_root_path.canonicalize())
+        && source_canonical == game_canonical {
             let _ = status_sender.send("Beginning database restructure...".to_string());
             flatten_to_raw(game_root_path, &raw_directory_path, &status_sender, &abort_flag, &progress_current, &progress_maximum)?;
             return sort_raw_folder(&raw_directory_path, game_root_path, &status_sender, &abort_flag, &progress_current, &progress_maximum);
         }
-    }
 
     let _ = status_sender.send("Importing standard raw files...".to_string());
     
@@ -66,7 +64,7 @@ pub fn run(
         
         let c = count.fetch_add(1, Ordering::Relaxed) + 1;
         progress_current.store(c, Ordering::Relaxed);
-        if c % update_interval == 0 {
+        if c.is_multiple_of(update_interval) {
             let _ = status_sender.send(format!("Copied {} files to raw...", c));
         }
     });
@@ -125,7 +123,7 @@ fn sort_raw_folder(
         let c = extracted_count.fetch_add(1, Ordering::Relaxed) + 1;
         progress_current.store(c, Ordering::Relaxed);
         
-        if c % update_interval == 0 {
+        if c.is_multiple_of(update_interval) {
             let _ = status_sender.send(format!("Sorted {} files | Current: {}", c, filename_string));
         }
 
@@ -208,7 +206,7 @@ fn flatten_to_raw(
         let current_count = count.fetch_add(1, Ordering::Relaxed) + 1;
         progress_current.store(current_count, Ordering::Relaxed);
         
-        if current_count % update_interval == 0 {
+        if current_count.is_multiple_of(update_interval) {
             let name = path.file_name().unwrap_or_default().to_string_lossy();
             let _ = status_sender.send(format!("Moved {} files to raw | Current: {}", current_count, name));
         }

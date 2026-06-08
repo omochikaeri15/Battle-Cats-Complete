@@ -10,15 +10,14 @@ use crate::enemy::logic::loader;
 use crate::global::formats::mamodel::Model;
 
 #[derive(Deserialize, Serialize, PartialEq, Clone, Copy)]
+#[derive(Default)]
 pub enum EnemyDetailTab {
+    #[default]
     Abilities,
     Details,
     Animation,
 }
 
-impl Default for EnemyDetailTab {
-    fn default() -> Self { Self::Abilities }
-}
 
 #[derive(Deserialize, Serialize)]
 #[serde(default)]

@@ -98,11 +98,10 @@ fn render_single_icon(
                 if let Some(tex) = &sheet.texture_handle {
                     let response = ui.add(egui::Image::new(egui::load::SizedTexture::new(tex.id(), size)).uv(egui::Rect::from_min_max(egui::pos2(cut.uv_coordinates.min.x, cut.uv_coordinates.min.y), egui::pos2(cut.uv_coordinates.max.x, cut.uv_coordinates.max.y))));
                     
-                    if let Some(border_id) = item.border_id {
-                        if let Some(b_cut) = sheet.core.cuts_map.get(&border_id) {
+                    if let Some(border_id) = item.border_id
+                        && let Some(b_cut) = sheet.core.cuts_map.get(&border_id) {
                             ui.put(response.rect, egui::Image::new(egui::load::SizedTexture::new(tex.id(), size)).uv(egui::Rect::from_min_max(egui::pos2(b_cut.uv_coordinates.min.x, b_cut.uv_coordinates.min.y), egui::pos2(b_cut.uv_coordinates.max.x, b_cut.uv_coordinates.max.y))));
                         }
-                    }
                     return response;
                 } else if sheet.core.is_loading_active {
                     return ui.allocate_response(size, egui::Sense::hover());

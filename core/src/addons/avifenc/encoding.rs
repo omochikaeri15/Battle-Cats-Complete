@@ -73,7 +73,7 @@ fn encode_via_pipe(
         ffmpeg_command_builder.creation_flags(0x08000000);
     }
     
-    let Ok(mut ffmpeg_command) = ffmpeg_command_builder.args(&[
+    let Ok(mut ffmpeg_command) = ffmpeg_command_builder.args([
         "-f", "rawvideo", 
         "-pixel_format", "rgba", 
         "-video_size", &format!("{}x{}", config.width, config.height), 

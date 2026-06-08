@@ -49,7 +49,7 @@ impl Default for EnemyList {
                 let bg = bg_cache.clone();
 
                 rayon::spawn(move || {
-                    let result = process_image(&req.path, &*bg);
+                    let result = process_image(&req.path, &bg);
                     let _ = tx.send(LoadedImage { id: req.id, img: result });
                     ctx.request_repaint();
                 });
@@ -99,8 +99,8 @@ impl EnemyList {
         search_query: &str,
         filter: &EnemyFilterState,
     ) {
-        if self.placeholder_texture.is_none() {
-            if let Ok(img) = image::load_from_memory(core::global::assets::UDI_F) {
+        if self.placeholder_texture.is_none()
+            && let Ok(img) = image::load_from_memory(core::global::assets::UDI_F) {
                 let rgba = img.to_rgba8();
                 let size = [rgba.width() as usize, rgba.height() as usize];
                 let pixels = rgba.as_flat_samples();
@@ -110,7 +110,6 @@ impl EnemyList {
                     egui::TextureOptions::LINEAR
                 ));
             }
-        }
 
         while let Ok(loaded) = self.rx_result.try_recv() {
             if let Some(img) = loaded.img {
@@ -223,7 +222,7 @@ impl EnemyList {
             }
 
             let full_id = entry.id_str().to_lowercase();
-            let is_id_search = query_lower.chars().next().map_or(false, |c| c.is_ascii_digit());
+            let is_id_search = query_lower.chars().next().is_some_and(|c| c.is_ascii_digit());
             
             if is_id_search && full_id.contains(&query_lower) {
                 self.cached_indices.push(i);
@@ -281,7 +280,7 @@ fn process_image(path: &PathBuf, bg_cache: &Option<image::RgbaImage>) -> Option<
                 if dest_x >= 0 && dest_x < bg_w && dest_y >= 0 && dest_y < bg_h {
                     let bg_pixel = final_image.get_pixel_mut(dest_x as u32, dest_y as u32);
                     let is_black_border = bg_pixel[0] < 25 && bg_pixel[1] < 25 && bg_pixel[2] < 25 && bg_pixel[3] > 200;
-                    if !is_black_border { bg_pixel.blend(&pixel); }
+                    if !is_black_border { bg_pixel.blend(pixel); }
                 }
             }
 

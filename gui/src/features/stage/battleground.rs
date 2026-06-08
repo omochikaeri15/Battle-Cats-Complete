@@ -142,10 +142,10 @@ pub fn draw(
                         let Some(located_enemy_entry) = enemy_registry.get(&enemy_data.id) else { break 'icon false; };
                         let Some(enemy_icon_path) = &located_enemy_entry.icon_path else { break 'icon false; };
 
-                        if !texture_cache.contains_key(&enemy_data.id) {
+                        if let std::collections::hash_map::Entry::Vacant(e) = texture_cache.entry(enemy_data.id) {
                             let Some(processed_color_image) = process_enemy_icon_texture(enemy_icon_path) else { break 'icon false; };
                             let generated_texture_handle = egui_context.load_texture(format!("stage_enemy_icon_{}", enemy_data.id), processed_color_image, egui::TextureOptions::LINEAR);
-                            texture_cache.insert(enemy_data.id, generated_texture_handle);
+                            e.insert(generated_texture_handle);
                         }
 
                         let Some(cached_texture_handle) = texture_cache.get(&enemy_data.id) else { break 'icon false; };

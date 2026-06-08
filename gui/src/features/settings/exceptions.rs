@@ -159,8 +159,8 @@ pub fn show(context: &egui::Context, drag_guard: &mut DragGuard) {
                     if import_result { ("Imported!", success_color) } else { ("Failed!", fail_color) }
                 } else { ("Load List", default_color) };
 
-                if horizontal_ui.add_sized([button_width, button_height], egui::Button::new(egui::RichText::new(import_text).size(12.0).strong().color(egui::Color32::WHITE)).fill(import_color).rounding(4.0)).clicked() {
-                    if let Some(file_path) = rfd::FileDialog::new().add_filter("JSON", &["json"]).pick_file() {
+                if horizontal_ui.add_sized([button_width, button_height], egui::Button::new(egui::RichText::new(import_text).size(12.0).strong().color(egui::Color32::WHITE)).fill(import_color).rounding(4.0)).clicked()
+                    && let Some(file_path) = rfd::FileDialog::new().add_filter("JSON", &["json"]).pick_file() {
                         let success = match ExceptionList::load_from_file(&file_path) {
                             Ok(list) => {
                                 state.rules = list.rules;
@@ -174,7 +174,6 @@ pub fn show(context: &egui::Context, drag_guard: &mut DragGuard) {
                             data_map.insert_temp(egui::Id::new("exceptions_import_result"), success);
                         });
                     }
-                }
 
                 let export_time = context.data(|data_map| data_map.get_temp::<f64>(egui::Id::new("exceptions_export_time"))).unwrap_or(-10.0);
                 let export_result = context.data(|data_map| data_map.get_temp::<bool>(egui::Id::new("exceptions_export_result"))).unwrap_or(false);

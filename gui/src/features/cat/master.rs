@@ -54,15 +54,13 @@ pub fn show(
     let base_stats = dynamic_stats.as_ref().and_then(|v| v.get(*current_form));
     let form_allows_talents = *current_form >= 2;
 
-    let final_stats_owned = if let Some(base) = base_stats {
-        Some(core::cat::logic::stats::get_final_stats(
+    let final_stats_owned = base_stats.map(|base| core::cat::logic::stats::get_final_stats(
             base,
             cat_entry.curve.as_ref(),
             *current_level,
             if form_allows_talents { cat_entry.talent_data.as_ref() } else { None },
             if form_allows_talents { Some(&*talent_levels) } else { None }
-        ))
-    } else { None };
+        ));
 
     let global_ctx = GlobalContext { param };
 
@@ -113,14 +111,13 @@ pub fn show(
     ui.add_space(0.0);
 
     // FIX: Clear the new held_unit structure
-    if *current_tab != DetailTab::Animation {
-        if !anim_viewer.loaded_id.is_empty() {
+    if *current_tab != DetailTab::Animation
+        && !anim_viewer.loaded_id.is_empty() {
             anim_viewer.held_unit = None;
             anim_viewer.current_anim = None;
             anim_viewer.loaded_id.clear();
             *unit_sync = None;
         }
-    }
 
     match current_tab {
         DetailTab::Abilities => {

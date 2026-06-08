@@ -142,19 +142,17 @@ pub fn decrypt_chunk(
 ) -> (Vec<u8>, Option<Region>) {
 
     for cipher in &keys.ciphers {
-        if let Ok(result) = decrypt_cbc(data, &cipher.key, &cipher.iv) {
-            if check_integrity(&result, internal_filename) {
+        if let Ok(result) = decrypt_cbc(data, &cipher.key, &cipher.iv)
+            && check_integrity(&result, internal_filename) {
                 return (result, Some(cipher.region));
             }
-        }
     }
 
     let server_key = get_md5_key("battlecats");
-    if let Ok(result) = decrypt_ecb(data, &server_key) {
-        if check_integrity(&result, internal_filename) {
+    if let Ok(result) = decrypt_ecb(data, &server_key)
+        && check_integrity(&result, internal_filename) {
             return (result, None);
         }
-    }
 
     (data.to_vec(), None)
 }
@@ -202,14 +200,12 @@ pub fn encrypt_chunk(
 /// Returns the decrypted manifest as a valid UTF-8 `String`, or a `PackError` if decryption fails.
 pub fn decrypt_list(data: &[u8]) -> Result<String, PackError> {
     let pack_key = get_md5_key("pack");
-    if let Ok(bytes) = decrypt_ecb(data, &pack_key) {
-        if let Ok(s) = String::from_utf8(bytes) { return Ok(s); }
-    }
+    if let Ok(bytes) = decrypt_ecb(data, &pack_key)
+        && let Ok(s) = String::from_utf8(bytes) { return Ok(s); }
 
     let bc_key = get_md5_key("battlecats");
-    if let Ok(bytes) = decrypt_ecb(data, &bc_key) {
-        if let Ok(s) = String::from_utf8(bytes) { return Ok(s); }
-    }
+    if let Ok(bytes) = decrypt_ecb(data, &bc_key)
+        && let Ok(s) = String::from_utf8(bytes) { return Ok(s); }
 
     Err(PackError::ListDecryptionFailed)
 }

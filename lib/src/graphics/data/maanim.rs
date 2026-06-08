@@ -121,9 +121,8 @@ impl Animation {
 
         let mut max_len = 0;
         for curve in &curves {
-            if let Some(last_keyframe) = curve.keyframes.last() {
-                if last_keyframe.frame > max_len { max_len = last_keyframe.frame; }
-            }
+            if let Some(last_keyframe) = curve.keyframes.last()
+                && last_keyframe.frame > max_len { max_len = last_keyframe.frame; }
         }
 
         Some(Self { curves, max_frame: max_len })
@@ -153,12 +152,12 @@ impl Animation {
                 None => continue,
             };
 
-            let duration = (last_keyframe.frame - first_keyframe.frame) as i32;
+            let duration = (last_keyframe.frame - first_keyframe.frame);
             if duration <= 0 {
                 continue;
             }
 
-            overall_lcm = math::lcm(overall_lcm as i32, duration) as i64;
+            overall_lcm = math::lcm(overall_lcm as i32, duration);
 
             if overall_lcm > 999_999 {
                 return None;

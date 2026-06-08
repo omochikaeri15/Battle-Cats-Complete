@@ -142,7 +142,7 @@ fn render_info_box(ui: &mut egui::Ui, enemy: &EnemyEntry, mag_input: &mut String
             
             if ui.add(egui::TextEdit::singleline(mag_input).desired_width(30.0)).changed() {
                 let text = mag_input.trim();
-                let parts: Vec<&str> = text.split(|c| c == '/' || c == '|' || c == '\\').collect();
+                let parts: Vec<&str> = text.split(['/', '|', '\\']).collect();
                 
                 if parts.len() >= 2 {
                     let hp = parts[0].trim().parse::<i32>().unwrap_or(100);

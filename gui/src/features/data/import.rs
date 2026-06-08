@@ -147,12 +147,11 @@ pub fn show(ui: &mut egui::Ui, state: &mut ImportState, settings: &mut Settings)
 
                 ui.horizontal(|ui| {
                     ui.add_space(10.0);
-                    if ui.button("Select Folder").clicked() {
-                        if let Some(folder_path) = rfd::FileDialog::new().pick_folder() {
+                    if ui.button("Select Folder").clicked()
+                        && let Some(folder_path) = rfd::FileDialog::new().pick_folder() {
                             state.config.decrypt_path = folder_path.to_string_lossy().to_string();
                             state.decrypt_censored = crate::features::data::state::censor_path(&state.config.decrypt_path);
                         }
-                    }
                     ui.label(if state.decrypt_censored.is_empty() { "None selected" } else { &state.decrypt_censored });
                 });
             });
@@ -227,8 +226,8 @@ pub fn show(ui: &mut egui::Ui, state: &mut ImportState, settings: &mut Settings)
         let button_width = 300.0;
         ui.add_space((ui.available_width() - button_width) / 2.0);
 
-        let show_success = state.config.import_job_completed_time.map_or(false, |time| time.elapsed().as_secs() < 2);
-        let show_aborted = state.config.import_job_aborted_time.map_or(false, |time| time.elapsed().as_secs() < 2);
+        let show_success = state.config.import_job_completed_time.is_some_and(|time| time.elapsed().as_secs() < 2);
+        let show_aborted = state.config.import_job_aborted_time.is_some_and(|time| time.elapsed().as_secs() < 2);
         let is_aborting = is_running && state.config.import_abort_flag.load(Ordering::Relaxed);
 
         let (button_text, can_run, active_color) = match state.config.selected_job {

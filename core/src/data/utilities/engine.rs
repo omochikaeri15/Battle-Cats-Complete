@@ -107,11 +107,10 @@ pub fn run_universal_import(
         }
 
         let mut folder_region_name = source_directory.file_name().unwrap_or_default().to_string_lossy().to_lowercase();
-        if folder_region_name == "files" {
-            if let Some(parent_directory) = source_directory.parent() {
+        if folder_region_name == "files"
+            && let Some(parent_directory) = source_directory.parent() {
                 folder_region_name = parent_directory.file_name().unwrap_or_default().to_string_lossy().to_lowercase();
             }
-        }
 
         let current_region_code = match folder_region_name.as_str() {
             s if s.ends_with("tw") => "tw",
@@ -148,12 +147,12 @@ pub fn run_universal_import(
             let byte_size = fs::metadata(&loose_path).map(|m| m.len() as usize).unwrap_or(0);
 
             let matched_user_rule = compiled_regex_set.matches(&filename).into_iter().next().map(|index| &compiled_exception_rules[index]);
-            if let Some(rule) = matched_user_rule { if rule.handling == RuleHandling::Ignore { continue; } }
+            if let Some(rule) = matched_user_rule && rule.handling == RuleHandling::Ignore { continue; }
 
             let mut final_resolved_filename = filename.clone();
 
-            if let Some(rule) = matched_user_rule {
-                if rule.languages.values().any(|&is_active| is_active) {
+            if let Some(rule) = matched_user_rule
+                && rule.languages.values().any(|&is_active| is_active) {
                     let asset_path_object = Path::new(&filename);
                     let asset_stem_string = asset_path_object.file_stem().unwrap().to_string_lossy();
                     let asset_extension_string = asset_path_object.extension().unwrap_or_default().to_string_lossy();
@@ -176,7 +175,6 @@ pub fn run_universal_import(
                         }
                     }
                 }
-            }
 
             let extraction_task = UniversalTask {
                 pack_path: loose_path,
@@ -188,7 +186,7 @@ pub fn run_universal_import(
                 chrono_score: calculated_chrono_score,
                 is_loose: true,
             };
-            universal_task_map.entry(final_resolved_filename).or_insert_with(Vec::new).push(extraction_task);
+            universal_task_map.entry(final_resolved_filename).or_default().push(extraction_task);
         }
 
         for item_path in discovered_list_files {
@@ -198,13 +196,12 @@ pub fn run_universal_import(
             let pack_filename = corresponding_pack_path.file_name().unwrap_or_default().to_string_lossy().into_owned();
             let final_region_code = determine_region_code(&pack_filename, current_region_code);
 
-            let region_pack_map = current_pack_hashes.entry(final_region_code.clone()).or_insert_with(HashMap::new);
+            let region_pack_map = current_pack_hashes.entry(final_region_code.clone()).or_default();
 
-            if !region_pack_map.contains_key(&pack_filename) {
-                if let Ok(pack_hash_value) = manifest::hash_file(&corresponding_pack_path) {
+            if !region_pack_map.contains_key(&pack_filename)
+                && let Ok(pack_hash_value) = manifest::hash_file(&corresponding_pack_path) {
                     region_pack_map.insert(pack_filename.clone(), manifest::PackRecord { checksum: pack_hash_value });
                 }
-            }
 
             let Ok(list_file_data) = fs::read(&item_path) else { continue; };
 
@@ -219,12 +216,12 @@ pub fn run_universal_import(
                 let byte_size_value: usize = parts[2].parse().unwrap_or(0);
 
                 let matched_user_rule = compiled_regex_set.matches(raw_asset_name).into_iter().next().map(|index| &compiled_exception_rules[index]);
-                if let Some(rule) = matched_user_rule { if rule.handling == RuleHandling::Ignore { continue; } }
+                if let Some(rule) = matched_user_rule && rule.handling == RuleHandling::Ignore { continue; }
 
                 let mut final_resolved_filename = raw_asset_name.to_string();
 
-                if let Some(rule) = matched_user_rule {
-                    if rule.languages.values().any(|&is_active| is_active) {
+                if let Some(rule) = matched_user_rule
+                    && rule.languages.values().any(|&is_active| is_active) {
                         let asset_path_object = Path::new(raw_asset_name);
                         let asset_stem_string = asset_path_object.file_stem().unwrap().to_string_lossy();
                         let asset_extension_string = asset_path_object.extension().unwrap_or_default().to_string_lossy();
@@ -247,7 +244,6 @@ pub fn run_universal_import(
                             }
                         }
                     }
-                }
 
                 let extraction_task = UniversalTask {
                     pack_path: corresponding_pack_path.clone(),
@@ -260,7 +256,7 @@ pub fn run_universal_import(
                     is_loose: false,
                 };
 
-                universal_task_map.entry(final_resolved_filename).or_insert_with(Vec::new).push(extraction_task);
+                universal_task_map.entry(final_resolved_filename).or_default().push(extraction_task);
             }
         }
     }
@@ -270,7 +266,7 @@ pub fn run_universal_import(
     for (resolved_filename, duplicate_tasks) in universal_task_map {
         let mut tasks_by_region: HashMap<String, Vec<UniversalTask>> = HashMap::new();
         for processing_task in duplicate_tasks {
-            tasks_by_region.entry(processing_task.region_code.clone()).or_insert_with(Vec::new).push(processing_task);
+            tasks_by_region.entry(processing_task.region_code.clone()).or_default().push(processing_task);
         }
 
         let mut regional_winners_to_decrypt: Vec<UniversalTask> = Vec::new();
@@ -330,7 +326,7 @@ pub fn run_universal_import(
         progress_maximum.store(0, Ordering::Relaxed);
 
         for (region_key, pack_map) in current_pack_hashes {
-            let region_entry = global_pack_registry.entry(region_key).or_insert_with(HashMap::new);
+            let region_entry = global_pack_registry.entry(region_key).or_default();
             region_entry.extend(pack_map);
         }
 
@@ -423,7 +419,7 @@ pub fn run_universal_import(
             let _ = fs::write(&target_destination_path, &winning_candidate.clean_data);
 
             let current_extracted_total = successfully_extracted_count.fetch_add(1, Ordering::Relaxed) + 1;
-            if current_extracted_total as usize % console_update_interval == 0 { let _ = status_sender.send(format!("Processed {} files | Routing: {}", current_extracted_total, resolved_filename)); }
+            if (current_extracted_total as usize).is_multiple_of(console_update_interval) { let _ = status_sender.send(format!("Processed {} files | Routing: {}", current_extracted_total, resolved_filename)); }
 
             progress_current.fetch_add(1, Ordering::Relaxed);
 
@@ -456,7 +452,7 @@ pub fn run_universal_import(
     }
 
     for (region_key, pack_map) in current_pack_hashes {
-        let region_entry = global_pack_registry.entry(region_key).or_insert_with(HashMap::new);
+        let region_entry = global_pack_registry.entry(region_key).or_default();
         region_entry.extend(pack_map);
     }
 

@@ -64,11 +64,10 @@ fn get_pem_path() -> PathBuf {
 
 pub fn get_active_pem() -> (String, bool) {
     let path = get_pem_path();
-    if let Ok(content) = fs::read_to_string(&path) {
-        if content.contains("-----BEGIN PRIVATE KEY-----") && content.contains("-----BEGIN CERTIFICATE-----") {
+    if let Ok(content) = fs::read_to_string(&path)
+        && content.contains("-----BEGIN PRIVATE KEY-----") && content.contains("-----BEGIN CERTIFICATE-----") {
             return (content, true);
         }
-    }
     (DEFAULT_PEM.to_string(), false)
 }
 
@@ -98,8 +97,7 @@ pub fn generate_pem() -> Result<String> {
     let cert_end_index = DEFAULT_PEM.find(cert_end_tag).context("No cert end")?;
 
     let base64_certificate = &DEFAULT_PEM[cert_start_index + cert_start_tag.len()..cert_end_index]
-        .replace('\n', "")
-        .replace('\r', "");
+        .replace(['\n', '\r'], "");
 
     let raw_der_bytes = BASE64_STANDARD.decode(base64_certificate)?;
     let mut certificate_template: Certificate = rasn::der::decode(&raw_der_bytes)?;

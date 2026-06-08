@@ -139,7 +139,7 @@ impl EnemyRaw {
 }
 
 pub fn load_all(dir: &Path, filename: &str, priority: &[String]) -> Option<Vec<EnemyRaw>> {
-    let path = crate::global::resolver::get(dir, &[filename], priority).into_iter().next()?;
+    let path = crate::global::resolver::get(dir, [filename], priority).into_iter().next()?;
     
     let file_content = fs::read_to_string(path).ok()?;
     let mut enemies = Vec::new();

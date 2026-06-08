@@ -56,13 +56,11 @@ impl BattleCatsApp {
                     active_mod_file_changed = true;
                 }
 
-                if path_str.contains("icons") && (file_name == "icon.png") {
-                    if let Some(mods_idx) = path.components().position(|c| c.as_os_str().to_string_lossy().to_lowercase() == "mods") {
-                        if let Some(mod_folder) = path.components().nth(mods_idx + 1) {
+                if path_str.contains("icons") && (file_name == "icon.png")
+                    && let Some(mods_idx) = path.components().position(|c| c.as_os_str().to_string_lossy().to_lowercase() == "mods")
+                        && let Some(mod_folder) = path.components().nth(mods_idx + 1) {
                             mod_icons_to_refresh.insert(mod_folder.as_os_str().to_string_lossy().into_owned());
                         }
-                    }
-                }
             }
 
             if path_str.contains("img015") || path_str.contains("img022") {
@@ -113,13 +111,12 @@ impl BattleCatsApp {
             self.mod_state.data.refresh_mods();
         }
 
-        if !mod_icons_to_refresh.is_empty() {
-            if let Some(list) = &mut self.mod_state.list {
+        if !mod_icons_to_refresh.is_empty()
+            && let Some(list) = &mut self.mod_state.list {
                 for mod_name in mod_icons_to_refresh {
                     list.flush_icon(&mod_name);
                 }
             }
-        }
 
         if active_mod_file_changed || global_cat_refresh || global_enemy_refresh || global_stage_refresh {
             self.perform_full_data_reload();

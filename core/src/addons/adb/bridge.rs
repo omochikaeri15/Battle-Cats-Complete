@@ -73,11 +73,10 @@ fn establish_connection(emulator_config: &EmulatorConfig, status_sender: &Sender
         return Ok((serial, None));
     }
 
-    if !emulator_config.manual_ip.is_empty() {
-        if let Some(serial) = try_manual_ip_connection(&emulator_config.manual_ip, status_sender) {
+    if !emulator_config.manual_ip.is_empty()
+        && let Some(serial) = try_manual_ip_connection(&emulator_config.manual_ip, status_sender) {
             return Ok((serial, None));
         }
-    }
 
     if let Some(serial) = try_emulator_connection(status_sender) {
         return Ok((serial, None));
@@ -169,11 +168,10 @@ fn ensure_root_access(current_serial: &mut String, status_sender: &Sender<String
 
     if current_serial.contains(':') {
         let _ = driver::connect_wireless(current_serial);
-    } else if !current_serial.starts_with("emulator") {
-        if let Some(new_serial) = driver::find_usb_device() {
+    } else if !current_serial.starts_with("emulator")
+        && let Some(new_serial) = driver::find_usb_device() {
             *current_serial = new_serial;
         }
-    }
 
     let _ = status_sender.send("Waiting for device to reconnect...".to_string());
     let _ = driver::run_command(&["-s", current_serial, "wait-for-device"]);
@@ -201,7 +199,7 @@ fn pull_region_data(
     let _ = status_sender.send(format!("Pulling {}...", package_name));
     let target_directory = base_output_directory.join(&package_name);
 
-    let Err(process_error) = process_single_region_adb(status_sender, current_serial, &package_name, &target_directory, import_mode.clone()) else {
+    let Err(process_error) = process_single_region_adb(status_sender, current_serial, &package_name, &target_directory, *import_mode) else {
         successful_pulls.push(target_directory);
         return;
     };
@@ -224,7 +222,7 @@ fn pull_region_data(
     }
 
     *current_serial = rescue_ip_address.clone();
-    if process_single_region_adb(status_sender, current_serial, &package_name, &target_directory, import_mode.clone()).is_ok() {
+    if process_single_region_adb(status_sender, current_serial, &package_name, &target_directory, *import_mode).is_ok() {
         let _ = status_sender.send("Rescue Successful!".to_string());
         successful_pulls.push(target_directory);
     }

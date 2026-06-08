@@ -81,7 +81,7 @@ impl ApkEditor {
             .ok_or(ResError::MissingElement("package attribute"))?;
 
         let original_package = match package_attr.typed_value.data {
-            ResValueType::String(ref string_value) => string_value.resolve(&mut self.manifest.string_pool).unwrap_or_default().to_string(),
+            ResValueType::String(ref string_value) => string_value.resolve(&self.manifest.string_pool).unwrap_or_default().to_string(),
             _ => return Err(ResError::MissingElement("Invalid package string format")),
         };
 
@@ -151,11 +151,10 @@ impl ApkEditor {
             }
         }
 
-        if let Some(ref mut table) = self.res_table {
-            if let Some(package) = table.packages.first_mut() {
+        if let Some(ref mut table) = self.res_table
+            && let Some(package) = table.packages.first_mut() {
                 package.name = new_package_name.clone();
             }
-        }
 
         Ok(new_package_name)
     }
@@ -196,12 +195,11 @@ fn replace_package_refs(
             _ => {}
         }
 
-        if let Some(resolved_string) = resolved_str {
-            if resolved_string.contains(old_pkg) {
+        if let Some(resolved_string) = resolved_str
+            && resolved_string.contains(old_pkg) {
                 let new_val = resolved_string.replace(old_pkg, new_pkg);
                 attr.write_string(new_val.into(), pool);
             }
-        }
     }
 
     for child in &mut elem.children {
@@ -263,11 +261,10 @@ pub fn inject_and_build_apk(
             continue;
         }
 
-        if file_name.starts_with("res/") {
-            if let Some(parent) = Path::new(&file_name).parent() {
+        if file_name.starts_with("res/")
+            && let Some(parent) = Path::new(&file_name).parent() {
                 existing_res_folders.insert(parent.to_string_lossy().replace("\\", "/"));
             }
-        }
 
         if files_to_inject.contains(&file_name) {
             continue;

@@ -7,7 +7,9 @@ use core::settings::logic::desktop;
 
 #[cfg(target_os = "linux")]
 #[derive(Clone, Copy, PartialEq)]
+#[derive(Default)]
 enum DesktopActionState {
+    #[default]
     None,
     Created,
     Deleted,
@@ -15,11 +17,6 @@ enum DesktopActionState {
 }
 
 #[cfg(target_os = "linux")]
-impl Default for DesktopActionState {
-    fn default() -> Self {
-        Self::None
-    }
-}
 
 pub fn show(ui_container: &mut egui::Ui, settings: &mut GeneralSettings, runtime: &mut RuntimeState) -> bool {
     let mut refresh_needed = false;
@@ -218,18 +215,16 @@ fn render_drag_list(ui_container: &mut egui::Ui, priority: &mut Vec<String>) -> 
             }).response;
 
             let drop_rect = row_response.rect.expand2(egui::vec2(100.0, 0.0));
-            if let Some(mouse_position) = frame_ui.ctx().pointer_interact_pos() {
-                if drop_rect.contains(mouse_position) { target_index = Some(index); }
-            }
+            if let Some(mouse_position) = frame_ui.ctx().pointer_interact_pos()
+                && drop_rect.contains(mouse_position) { target_index = Some(index); }
         }
     });
 
-    if let (Some(source), Some(target)) = (source_index, target_index) {
-        if source != target {
+    if let (Some(source), Some(target)) = (source_index, target_index)
+        && source != target {
             let item = priority.remove(source);
             priority.insert(target, item);
         }
-    }
 
     just_dropped
 }

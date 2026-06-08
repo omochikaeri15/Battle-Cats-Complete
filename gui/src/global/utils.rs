@@ -21,7 +21,7 @@ pub fn process_markdown(ui: &mut egui::Ui, raw_text: &str) {
             if trimmed.starts_with('•') || trimmed.starts_with('-') || trimmed.starts_with('*') {
                 ui.spacing_mut().item_spacing.x = 3.0;
                 ui.label("•");
-                let text = trimmed.trim_start_matches(|c| c == '•' || c == '-' || c == '*').trim();
+                let text = trimmed.trim_start_matches(['•', '-', '*']).trim();
                 ui.add(egui::Label::new(text).wrap());
             } else if trimmed.starts_with('#') {
                 let text = trimmed.trim_start_matches('#').trim();

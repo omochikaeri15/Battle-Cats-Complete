@@ -89,11 +89,10 @@ pub fn start_pack_import(state: &mut ModDataState, path: PathBuf) {
                 let _ = tx.send("Cleaning up temporary pack files...".to_string());
 
                 // Prevent the OS Error 2 if the folder doesn't exist
-                if let Err(e) = std::fs::remove_dir_all(&target_dir) {
-                    if e.kind() != std::io::ErrorKind::NotFound {
+                if let Err(e) = std::fs::remove_dir_all(&target_dir)
+                    && e.kind() != std::io::ErrorKind::NotFound {
                         let _ = tx.send(format!("Warning: Could not fully delete {}: {}", target_dir.display(), e));
                     }
-                }
 
                 if Path::new("mods/packages").exists() {
                     let _ = std::fs::remove_dir("mods/packages"); // Ignore error if not empty
@@ -147,7 +146,7 @@ pub fn start_raw_import(state: &mut ModDataState, is_folder: bool, path_opt: Opt
             if let Err(e) = copy_dir_all(&p, &target_dir) {
                 let _ = tx.send(format!("Error copying folder: {}", e));
             } else {
-                let final_name = apply_metadata_rename(&mods_root, &target_dir, mod_num);
+                let final_name = apply_metadata_rename(mods_root, &target_dir, mod_num);
                 let _ = tx.send(format!("Raw Import Complete! Saved as '{}'.", final_name));
             }
             return;
@@ -161,7 +160,7 @@ pub fn start_raw_import(state: &mut ModDataState, is_folder: bool, path_opt: Opt
             }
         }
 
-        let final_name = apply_metadata_rename(&mods_root, &target_dir, mod_num);
+        let final_name = apply_metadata_rename(mods_root, &target_dir, mod_num);
         let _ = tx.send(format!("Raw Import Complete! Saved as '{}'.", final_name));
     });
 }

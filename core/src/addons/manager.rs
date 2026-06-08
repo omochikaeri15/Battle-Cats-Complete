@@ -94,7 +94,7 @@ fn set_executable_permissions(out_path: &Path, binary_name: &str) {
 
     let Some(fname) = out_path.file_name() else { return; };
     let is_target = fname == binary_name;
-    let in_bin_folder = out_path.parent().map_or(false, |p| p.ends_with("bin"));
+    let in_bin_folder = out_path.parent().is_some_and(|p| p.ends_with("bin"));
 
     if is_target || in_bin_folder {
         let _ = fs::set_permissions(out_path, fs::Permissions::from_mode(0o755));

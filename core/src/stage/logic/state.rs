@@ -16,6 +16,7 @@ use crate::stage::logic::loader;
 
 #[derive(Deserialize, Serialize)]
 #[serde(default)]
+#[derive(Default)]
 pub struct StageDataState {
     #[serde(skip)] pub registry: StageRegistry,
     pub search_query: String,
@@ -35,27 +36,6 @@ pub struct StageDataState {
     #[serde(skip)] pub active_language_priority: Vec<String>,
 }
 
-impl Default for StageDataState {
-    fn default() -> Self {
-        Self {
-            registry: StageRegistry::default(),
-            search_query: String::new(),
-            selected_category: None,
-            selected_map: None,
-            selected_stage: None,
-            scan_receiver: None,
-            enemy_registry: HashMap::new(),
-            enemy_name_registry: Vec::new(),
-            item_buy_registry: HashMap::new(),
-            item_name_registry: HashMap::new(),
-            drop_chara_registry: HashMap::new(),
-            unit_buy_registry: HashMap::new(),
-            lock_skip_registry: HashMap::new(),
-            scat_cpu_setting: scatcpusetting::ScatCpuSetting::default(),
-            active_language_priority: Vec::new(),
-        }
-    }
-}
 
 impl StageDataState {
     pub fn restart_scan(&mut self, scanner_configuration: ScannerConfig) {

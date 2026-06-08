@@ -9,16 +9,15 @@ use crate::cat::logic::loader;
 use crate::global::formats::mamodel::Model;
 
 #[derive(Deserialize, Serialize, PartialEq, Clone, Copy)]
+#[derive(Default)]
 pub enum DetailTab {
+    #[default]
     Abilities,
     Details,
     Talents,
     Animation,
 }
 
-impl Default for DetailTab {
-    fn default() -> Self { Self::Abilities }
-}
 
 #[derive(Deserialize, Serialize)]
 #[serde(default)]

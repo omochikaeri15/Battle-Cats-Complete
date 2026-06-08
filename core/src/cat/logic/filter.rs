@@ -264,8 +264,8 @@ fn check_talent_presence_only(cat: &CatEntry, form_index: usize, require_normal:
     let mut has_any_normal = false;
     let mut has_any_ultra = false;
 
-    if form_index >= 2 {
-        if let Some(talent_data) = cat.talent_data.as_ref() {
+    if form_index >= 2
+        && let Some(talent_data) = cat.talent_data.as_ref() {
             for talent_group in &talent_data.groups {
                 if talent_group.limit == 1 {
                     has_any_ultra = true;
@@ -274,7 +274,6 @@ fn check_talent_presence_only(cat: &CatEntry, form_index: usize, require_normal:
                 }
             }
         }
-    }
 
     if require_normal && require_ultra {
         return has_any_normal || has_any_ultra;
@@ -341,10 +340,10 @@ fn evaluate_icon_requirements(
         let mut has_normal_talent = false;
         let mut has_ultra_talent = false;
 
-        if form_index >= 2 {
-            if let Some(talent_data) = cat.talent_data.as_ref() {
+        if form_index >= 2
+            && let Some(talent_data) = cat.talent_data.as_ref() {
                 for talent_group in &talent_data.groups {
-                    let matches_target_icon = pure_ability_definition.map_or(false, |pure_def| {
+                    let matches_target_icon = pure_ability_definition.is_some_and(|pure_def| {
                         talent_group.ability_id == pure_def.talent_id || talent_group.name_id as u8 == pure_def.talent_id
                     });
 
@@ -357,7 +356,6 @@ fn evaluate_icon_requirements(
                     }
                 }
             }
-        }
 
         let is_inherent_valid = filter.talent_mode != TalentFilterMode::Only && filter.ultra_talent_mode != TalentFilterMode::Only && has_inherent_ability;
         let is_normal_valid = filter.talent_mode != TalentFilterMode::Ignore && has_normal_talent;
@@ -419,17 +417,15 @@ fn test_single_build_ranges(
             .map(|(_, value, _)| *value)
             .unwrap_or(0);
 
-        if let Ok(minimum_required) = target_range.min.parse::<i32>() {
-            if attribute_value < minimum_required {
+        if let Ok(minimum_required) = target_range.min.parse::<i32>()
+            && attribute_value < minimum_required {
                 return false;
             }
-        }
 
-        if let Ok(maximum_required) = target_range.max.parse::<i32>() {
-            if attribute_value > maximum_required {
+        if let Ok(maximum_required) = target_range.max.parse::<i32>()
+            && attribute_value > maximum_required {
                 return false;
             }
-        }
     }
 
     true

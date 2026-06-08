@@ -19,8 +19,8 @@ impl GuiSpriteSheet {
         self.core.update();
 
         // If the core has the image data, but we haven't uploaded it to the GPU yet:
-        if self.texture_handle.is_none() && !self.core.is_loading_active {
-            if let Some(image_data) = &self.core.image_data {
+        if self.texture_handle.is_none() && !self.core.is_loading_active
+            && let Some(image_data) = &self.core.image_data {
                 let size = [image_data.width() as usize, image_data.height() as usize];
                 let pixels = image_data.as_flat_samples();
                 let color_image = egui::ColorImage::from_rgba_unmultiplied(size, pixels.as_slice());
@@ -31,6 +31,5 @@ impl GuiSpriteSheet {
                     egui::TextureOptions::LINEAR
                 ));
             }
-        }
     }
 }

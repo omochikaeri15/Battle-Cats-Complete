@@ -11,7 +11,7 @@ pub fn load(cats_directory: &Path, priority: &[String]) -> HashMap<u32, UnitEvol
     let has_content = |data: &[String]| data.iter().any(|s| !s.is_empty());
 
     // Iterate through fallback languages
-    for file_path in crate::global::resolver::get(&base_directory, &["unitevolve.csv"], priority) {
+    for file_path in crate::global::resolver::get(&base_directory, ["unitevolve.csv"], priority) {
         if let Ok(bytes) = fs::read(&file_path) {
 
             // THE WAITER HAND-OFF

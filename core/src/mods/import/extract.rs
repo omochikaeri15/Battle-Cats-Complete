@@ -66,11 +66,10 @@ pub fn run_archive(archive_path: &Path, _target_dir: &Path, tx: Sender<String>, 
 
         } else { None };
 
-        if let Some(out_path) = save_path {
-            if let Ok(mut out_file) = fs::File::create(&out_path) {
+        if let Some(out_path) = save_path
+            && let Ok(mut out_file) = fs::File::create(&out_path) {
                 let _ = std::io::copy(&mut file_in_zip, &mut out_file);
             }
-        }
     }
 
     if has_pack_data && mod_dir.join("DownloadLocal.list").exists() && mod_dir.join("DownloadLocal.pack").exists() {

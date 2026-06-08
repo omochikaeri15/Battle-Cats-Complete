@@ -16,11 +16,10 @@ pub fn calculate_weight(filename: &str, is_update_pack: bool) -> u64 {
     let mut weight = 5_000;
     let parts: Vec<&str> = stem.split('_').collect();
 
-    if parts.len() >= 3 {
-        if let (Ok(version_major), Ok(version_minor)) = (parts[1].parse::<u64>(), parts[2].parse::<u64>()) {
+    if parts.len() >= 3
+        && let (Ok(version_major), Ok(version_minor)) = (parts[1].parse::<u64>(), parts[2].parse::<u64>()) {
             weight = 100_000_000 + (version_major * 100) + version_minor;
         }
-    }
 
     if weight == 5_000 && stem.ends_with("Server") {
         let chars: Vec<char> = stem.chars().collect();

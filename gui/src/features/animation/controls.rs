@@ -190,11 +190,10 @@ fn render_internal_ui(
                                     ui.style_mut().visuals.widgets.hovered.bg_fill = egui::Color32::TRANSPARENT;
                                     let text_response = ui.add_enabled(is_enabled, egui::TextEdit::singleline(&mut anim_viewer.single_frame_str)
                                         .frame(false).desired_width(INPUT_W).vertical_align(egui::Align::Center).horizontal_align(egui::Align::Center));
-                                    if text_response.changed() {
-                                        if let Ok(parsed_value) = anim_viewer.single_frame_str.parse::<i32>() {
+                                    if text_response.changed()
+                                        && let Ok(parsed_value) = anim_viewer.single_frame_str.parse::<i32>() {
                                             anim_viewer.current_frame = parsed_value as f32 / display_multiplier;
                                         }
-                                    }
                                     if !text_response.has_focus() {
                                         anim_viewer.single_frame_str = format!("{}", current_display_value);
                                     }
@@ -228,12 +227,11 @@ fn render_internal_ui(
                                 ui.set_width(60.0); ui.set_height(TILE_HEIGHT);
                                 ui.with_layout(egui::Layout::centered_and_justified(egui::Direction::LeftToRight), |ui| {
                                     ui.style_mut().visuals.widgets.inactive.bg_fill = egui::Color32::TRANSPARENT;
-                                    if let Some(range_start) = loop_range_start {
-                                        if anim_viewer.range_str_cache.0.is_empty() {
+                                    if let Some(range_start) = loop_range_start
+                                        && anim_viewer.range_str_cache.0.is_empty() {
                                             let display_value = (range_start as f32 * display_multiplier).round() as i32;
                                             anim_viewer.range_str_cache.0 = display_value.to_string();
                                         }
-                                    }
                                     let text_response = ui.add_enabled(is_enabled, egui::TextEdit::singleline(&mut anim_viewer.range_str_cache.0)
                                         .hint_text(egui::RichText::new("0").color(egui::Color32::GRAY)).frame(false).desired_width(60.0).vertical_align(egui::Align::Center).horizontal_align(egui::Align::Center));
                                     if text_response.changed() {
@@ -250,12 +248,11 @@ fn render_internal_ui(
                                 ui.set_width(60.0); ui.set_height(TILE_HEIGHT);
                                 ui.with_layout(egui::Layout::centered_and_justified(egui::Direction::LeftToRight), |ui| {
                                     ui.style_mut().visuals.widgets.inactive.bg_fill = egui::Color32::TRANSPARENT;
-                                    if let Some(range_end) = loop_range_end {
-                                        if anim_viewer.range_str_cache.1.is_empty() {
+                                    if let Some(range_end) = loop_range_end
+                                        && anim_viewer.range_str_cache.1.is_empty() {
                                             let display_value = (range_end as f32 * display_multiplier).round() as i32;
                                             anim_viewer.range_str_cache.1 = display_value.to_string();
                                         }
-                                    }
                                     let text_response = ui.add_enabled(is_enabled, egui::TextEdit::singleline(&mut anim_viewer.range_str_cache.1)
                                         .hint_text(egui::RichText::new(&display_max_string).color(egui::Color32::GRAY)).frame(false).desired_width(60.0).vertical_align(egui::Align::Center).horizontal_align(egui::Align::Center));
                                     if text_response.changed() {

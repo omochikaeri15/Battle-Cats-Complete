@@ -196,12 +196,11 @@ fn show_raw_view(ui: &mut egui::Ui, state: &mut ModListState) {
     ui.horizontal(|ui| {
         let enabled = !state.data.import.is_busy;
         if is_folder {
-            if ui.add_enabled(enabled, egui::Button::new("Select Source")).clicked() {
-                if let Some(p) = rfd::FileDialog::new().pick_folder() {
+            if ui.add_enabled(enabled, egui::Button::new("Select Source")).clicked()
+                && let Some(p) = rfd::FileDialog::new().pick_folder() {
                     selected_path = Some(p);
                     ui.data_mut(|d| d.insert_temp(path_id, selected_path.clone()));
                 }
-            }
             let label_text = if let Some(p) = &selected_path { 
                 crate::features::data::state::censor_path(&p.to_string_lossy()) 
             } else { 
@@ -209,12 +208,11 @@ fn show_raw_view(ui: &mut egui::Ui, state: &mut ModListState) {
             };
             ui.label(label_text);
         } else {
-            if ui.add_enabled(enabled, egui::Button::new("Select Files")).clicked() {
-                if let Some(files) = rfd::FileDialog::new().pick_files() {
+            if ui.add_enabled(enabled, egui::Button::new("Select Files")).clicked()
+                && let Some(files) = rfd::FileDialog::new().pick_files() {
                     selected_files = files;
                     ui.data_mut(|d| d.insert_temp(files_id, selected_files.clone()));
                 }
-            }
             let count = selected_files.len();
             let label_text = match count {
                 0 => "No files selected".to_string(),

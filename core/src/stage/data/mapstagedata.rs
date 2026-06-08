@@ -19,7 +19,9 @@ pub struct TimedScore {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Default)]
 pub enum RewardStructure {
+    #[default]
     None,
     Treasure {
         drop_rule: i32,
@@ -28,9 +30,6 @@ pub enum RewardStructure {
     Timed(Vec<TimedScore>),
 }
 
-impl Default for RewardStructure {
-    fn default() -> Self { Self::None }
-}
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct MapStageEntry {
@@ -43,7 +42,7 @@ pub struct MapStageEntry {
 }
 
 pub fn load(dir: &Path, filename: &str, priority: &[String]) -> Vec<MapStageEntry> {
-    let paths = resolver::get(dir, &[filename], priority);
+    let paths = resolver::get(dir, [filename], priority);
     let Some(path) = paths.first() else { return Vec::new(); };
     let Ok(content) = fs::read_to_string(path) else { return Vec::new(); };
     
@@ -63,7 +62,7 @@ fn parse(content: &str) -> Vec<MapStageEntry> {
         if parts.len() < 2 { continue; }
 
         let mut entry = MapStageEntry {
-            energy: parts.get(0).and_then(|s| s.parse().ok()).unwrap_or(0),
+            energy: parts.first().and_then(|s| s.parse().ok()).unwrap_or(0),
             xp: parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(0),
             init_track: parts.get(2).and_then(|s| s.parse().ok()).unwrap_or(0),
             bgm_change_percent: parts.get(3).and_then(|s| s.parse().ok()).unwrap_or(0),

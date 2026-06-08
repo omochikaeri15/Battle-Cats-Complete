@@ -39,7 +39,7 @@ pub fn resolve_drop(
 
         let gatya_directory_path = PathBuf::from("game/ui/gatyaitemD");
         let gatya_file_name = format!("gatyaitemD_{:02}_f.png", resolved_image_identifier);
-        let image_path = crate::global::resolver::get(&gatya_directory_path, &[&gatya_file_name], active_language_priority_array).into_iter().next();
+        let image_path = crate::global::resolver::get(&gatya_directory_path, [&gatya_file_name], active_language_priority_array).into_iter().next();
 
         return ResolvedDrop {
             name,
@@ -65,7 +65,7 @@ pub fn resolve_drop(
 
         let img_directory_path = PathBuf::from(format!("game/cats/{:03}/f", located_chara_id));
         let img_file_name = format!("uni{:03}_f00.png", located_chara_id);
-        let image_path = crate::global::resolver::get(&img_directory_path, &[&img_file_name], active_language_priority_array).into_iter().next();
+        let image_path = crate::global::resolver::get(&img_directory_path, [&img_file_name], active_language_priority_array).into_iter().next();
 
         return ResolvedDrop {
             name,
@@ -88,7 +88,7 @@ pub fn resolve_drop(
 
         let img_directory_path = PathBuf::from(format!("game/cats/{:03}/s", unit_id));
         let img_file_name = format!("uni{:03}_s00.png", unit_id);
-        let image_path = crate::global::resolver::get(&img_directory_path, &[&img_file_name], active_language_priority_array).into_iter().next();
+        let image_path = crate::global::resolver::get(&img_directory_path, [&img_file_name], active_language_priority_array).into_iter().next();
 
         return ResolvedDrop {
             name,

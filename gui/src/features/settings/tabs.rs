@@ -70,7 +70,7 @@ pub fn show(context: &egui::Context, settings: &mut Settings, drag_guard: &mut D
     });
 
     if save_needed {
-        let _ = core::global::io::json::save("settings.json", &*settings);
+        core::global::io::json::save("settings.json", &*settings);
     }
 
     refresh_needed

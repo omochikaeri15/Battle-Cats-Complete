@@ -32,12 +32,10 @@ pub fn load<T: DeserializeOwned>(filename: &str) -> Option<T> {
     let mut path = get_app_data_dir();
     path.push(filename);
 
-    if path.exists() {
-        if let Ok(data) = fs::read_to_string(&path) {
-            if let Ok(parsed) = serde_json::from_str::<T>(&data) {
+    if path.exists()
+        && let Ok(data) = fs::read_to_string(&path)
+            && let Ok(parsed) = serde_json::from_str::<T>(&data) {
                 return Some(parsed);
             }
-        }
-    }
     None
 }

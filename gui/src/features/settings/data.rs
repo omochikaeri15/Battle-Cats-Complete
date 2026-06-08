@@ -325,11 +325,10 @@ pub fn show(ui_container: &mut egui::Ui, settings: &mut GameDataSettings, runtim
         raw_deleter.start("game/raw");
     }
 
-    if show_folder_delete_modal(&context, drag_guard, "delete_cache_modal", "Are you sure you want to clear the Cache?\nIt will automatically rebuild the next time the app loads.") {
-        if let Some(cache_directory) = core::global::io::cache::get_cache_dir() {
+    if show_folder_delete_modal(&context, drag_guard, "delete_cache_modal", "Are you sure you want to clear the Cache?\nIt will automatically rebuild the next time the app loads.")
+        && let Some(cache_directory) = core::global::io::cache::get_cache_dir() {
             cache_deleter.start(cache_directory);
         }
-    }
 
     crate::features::settings::exceptions::show(&context, drag_guard);
     crate::features::settings::keys::show(&context, drag_guard);

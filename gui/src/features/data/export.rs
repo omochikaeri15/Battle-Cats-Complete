@@ -102,8 +102,8 @@ pub fn show(ui: &mut egui::Ui, state: &mut ImportState, settings: &mut Settings)
     let full_filename = format!("{}.tar.zst", base_filename);
     let button_text = format!("Create {}", full_filename);
 
-    let show_success = state.config.export_job_completed_time.map_or(false, |time| time.elapsed().as_secs() < 2);
-    let show_aborted = state.config.export_job_aborted_time.map_or(false, |time| time.elapsed().as_secs() < 2);
+    let show_success = state.config.export_job_completed_time.is_some_and(|time| time.elapsed().as_secs() < 2);
+    let show_aborted = state.config.export_job_aborted_time.is_some_and(|time| time.elapsed().as_secs() < 2);
     let is_aborting = is_running && state.config.export_abort_flag.load(Ordering::Relaxed);
 
     ui.horizontal(|ui| {

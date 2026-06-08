@@ -122,8 +122,8 @@ pub fn draw(
                             let mut has_rendered_icon = false;
 
                             if let Some(resolved_image_path) = drop_info.image_path {
-                                if !item_texture_cache.contains_key(&drop_data.id) {
-                                    if let Some(processed_color_image) = process_item_icon_texture(&resolved_image_path) {
+                                if !item_texture_cache.contains_key(&drop_data.id)
+                                    && let Some(processed_color_image) = process_item_icon_texture(&resolved_image_path) {
                                         let generated_texture_handle = egui_context.load_texture(
                                             format!("treasure_item_icon_{}", drop_data.id),
                                             processed_color_image,
@@ -131,7 +131,6 @@ pub fn draw(
                                         );
                                         item_texture_cache.insert(drop_data.id, generated_texture_handle);
                                     }
-                                }
 
                                 if let Some(cached_texture_handle) = item_texture_cache.get(&drop_data.id) {
                                     let image_response = icon_layout.add(egui::Image::new(cached_texture_handle).max_size(egui::vec2(32.0, 32.0)));
@@ -186,8 +185,8 @@ pub fn draw(
                             let mut has_rendered_icon = false;
 
                             if let Some(resolved_image_path) = drop_info.image_path {
-                                if !item_texture_cache.contains_key(&score_data.id) {
-                                    if let Some(processed_color_image) = process_item_icon_texture(&resolved_image_path) {
+                                if !item_texture_cache.contains_key(&score_data.id)
+                                    && let Some(processed_color_image) = process_item_icon_texture(&resolved_image_path) {
                                         let generated_texture_handle = egui_context.load_texture(
                                             format!("treasure_item_icon_{}", score_data.id),
                                             processed_color_image,
@@ -195,7 +194,6 @@ pub fn draw(
                                         );
                                         item_texture_cache.insert(score_data.id, generated_texture_handle);
                                     }
-                                }
 
                                 if let Some(cached_texture_handle) = item_texture_cache.get(&score_data.id) {
                                     let image_response = icon_layout.add(egui::Image::new(cached_texture_handle).max_size(egui::vec2(32.0, 32.0)));

@@ -78,11 +78,10 @@ pub fn update_data(state: &mut EnemyDataState) {
     if is_done {
         state.enemies.retain(|e| state.active_scan_ids.contains(&e.id));
 
-        if let Some(sel) = state.selected_enemy {
-            if !state.active_scan_ids.contains(&sel) {
+        if let Some(sel) = state.selected_enemy
+            && !state.active_scan_ids.contains(&sel) {
                 state.selected_enemy = None;
             }
-        }
 
         state.scan_receiver = None;
     }

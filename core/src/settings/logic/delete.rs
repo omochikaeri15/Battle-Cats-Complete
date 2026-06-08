@@ -48,12 +48,11 @@ impl FolderDeleter {
         }
 
         // If the timer is up, reset back to IDLE
-        if let Some(time) = self.success_time {
-            if time.elapsed() > Duration::from_secs(2) {
+        if let Some(time) = self.success_time
+            && time.elapsed() > Duration::from_secs(2) {
                 self.state.store(IDLE, Ordering::SeqCst);
                 self.success_time = None;
             }
-        }
     }
 
     pub fn is_deleting(&self) -> bool {

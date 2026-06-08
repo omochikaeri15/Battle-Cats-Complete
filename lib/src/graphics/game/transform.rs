@@ -201,7 +201,7 @@ fn solve_single_part(target_index: usize, parts: &[ModelPart], model: &Model) ->
         opacity: target_global.opacity as f32,
         z_order: target_part.drawing_layer,
         sprite_index: target_part.sprite_index as usize,
-        pivot: Vector { x: target_part.pivot_x as f32, y: target_part.pivot_y as f32 },
+        pivot: Vector { x: target_part.pivot_x, y: target_part.pivot_y },
         hidden: target_part.unit_id == -1 || target_part.sprite_index == -1 || target_global.opacity < 0.001,
         glow: target_part.glow_mode,
         part_index: target_index,

@@ -5,7 +5,7 @@ use crate::global::resolver;
 
 pub fn load(dir_path: &Path, filename: &str, lang_priority: &[String]) -> HashMap<u32, Vec<u16>> {
     let mut difficulty_map = HashMap::new();
-    let file_paths = resolver::get(dir_path, &[filename], lang_priority);
+    let file_paths = resolver::get(dir_path, [filename], lang_priority);
     
     let Some(first_path) = file_paths.first() else { 
         return difficulty_map; 

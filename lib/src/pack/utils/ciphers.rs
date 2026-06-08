@@ -14,7 +14,7 @@ type Aes128EcbEnc = ecb::Encryptor<Aes128>;
 pub fn get_md5_key(text: &str) -> [u8; 16] {
     let digest = md5::compute(text.as_bytes());
     let mut key = [0u8; 16];
-    let hex_string = hex::encode(&digest.0);
+    let hex_string = hex::encode(digest.0);
     key.copy_from_slice(&hex_string.as_bytes()[0..16]);
     key
 }

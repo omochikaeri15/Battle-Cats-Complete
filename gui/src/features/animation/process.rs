@@ -22,13 +22,12 @@ pub fn process_frame(
         return;
     }
 
-    if let Some(abort_signal) = &state.abort {
-        if abort_signal.load(Ordering::Relaxed) {
+    if let Some(abort_signal) = &state.abort
+        && abort_signal.load(Ordering::Relaxed) {
             state.tx = None;
             state.abort = None;
             return;
         }
-    }
 
     let frame_count = (state.frame_end - state.frame_start).abs() + 1;
 
@@ -46,8 +45,8 @@ pub fn process_frame(
     let snap_x = (state.region_x * state.zoom).round() / state.zoom;
     let snap_y = (state.region_y * state.zoom).round() / state.zoom;
 
-    let pan_x = -snap_x - (state.region_w as f32 / (2.0 * state.zoom));
-    let pan_y = -snap_y - (state.region_h as f32 / (2.0 * state.zoom));
+    let pan_x = -snap_x - (state.region_w / (2.0 * state.zoom));
+    let pan_y = -snap_y - (state.region_h / (2.0 * state.zoom));
     let background_color = if state.background { [80, 80, 80, 255] } else { [0, 0, 0, 0] };
 
     let renderer_arc = renderer_reference.clone();
@@ -70,7 +69,7 @@ pub fn process_frame(
 
             let render_result = encoding::render_frame(
                 renderer,
-                &**painter.gl(),
+                painter.gl(),
                 width as u32,
                 height as u32,
                 &unit_arc,

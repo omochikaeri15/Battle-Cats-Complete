@@ -20,6 +20,12 @@ pub struct CatMatcher {
     egg_maanim: Regex,
 }
 
+impl Default for CatMatcher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CatMatcher {
     pub fn new() -> Self {
         Self {
@@ -61,11 +67,9 @@ impl CatMatcher {
             return Some(cats_dir.join("unitevolve"));
         }
         
-        if let Some(caps) = self.stats.captures(name) {
-            if let Ok(id) = caps[1].parse::<u32>() {
-                if id > 0 { return Some(cats_dir.join(format!("{:03}", id - 1))); }
-            }
-        }
+        if let Some(caps) = self.stats.captures(name)
+            && let Ok(id) = caps[1].parse::<u32>()
+                && id > 0 { return Some(cats_dir.join(format!("{:03}", id - 1))); }
         if let Some(caps) = self.icon.captures(name) { 
             return Some(cats_dir.join(&caps[1]).join(&caps[2])); 
         }
@@ -81,11 +85,9 @@ impl CatMatcher {
         if let Some(caps) = self.maanim.captures(name) { 
             return Some(cats_dir.join(&caps[1]).join(&caps[2]).join("anim")); 
         }
-        if let Some(caps) = self.explain.captures(name) {
-            if let Ok(id) = caps[1].parse::<u32>() {
-                if id > 0 { return Some(cats_dir.join(format!("{:03}", id - 1)).join("lang")); }
-            }
-        }
+        if let Some(caps) = self.explain.captures(name)
+            && let Ok(id) = caps[1].parse::<u32>()
+                && id > 0 { return Some(cats_dir.join(format!("{:03}", id - 1)).join("lang")); }
         
         if let Some(caps) = self.egg_icon.captures(name) {
             return Some(cats_dir.join(format!("egg_{}", &caps[1])).join(Self::map_egg(&caps[2])));

@@ -278,7 +278,7 @@ fn apply_target_traits(battle_stats: &mut Battle, target_name_id: i16, bitmask_t
         }
     };
 
-    if target_name_id >= 0 && target_name_id <= 11 {
+    if (0..=11).contains(&target_name_id) {
         apply_trait_bit(target_name_id as u16);
     }
 
@@ -306,11 +306,10 @@ pub fn apply_talent_stats(base_stats: &Battle, talent_data: &Talent, talent_leve
         let value_one = calculate_talent_value(talent_group.min_1, talent_group.max_1, current_level, talent_group.max_level);
         let value_two = calculate_talent_value(talent_group.min_2, talent_group.max_2, current_level, talent_group.max_level);
 
-        if let Some(pure_definition) = get_talent(talent_group.ability_id) {
-            if let Some(apply_talent_mutation) = pure_definition.apply_talent {
+        if let Some(pure_definition) = get_talent(talent_group.ability_id)
+            && let Some(apply_talent_mutation) = pure_definition.apply_talent {
                 apply_talent_mutation(&mut mutated_stats, value_one, value_two, talent_group);
             }
-        }
     }
     mutated_stats
 }

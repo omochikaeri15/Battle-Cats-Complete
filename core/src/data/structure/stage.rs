@@ -28,6 +28,12 @@ pub struct StageMatcher {
     scat_cpu: Regex,
 }
 
+impl Default for StageMatcher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StageMatcher {
     pub fn new() -> Self {
         Self {
@@ -113,7 +119,7 @@ impl StageMatcher {
 
             if raw_prefix_string == "ec" {
                 if parsed_stage_identifier == 48 { mapped_prefix_string = "M"; }
-                if parsed_stage_identifier >= 49 && parsed_stage_identifier <= 50 { 
+                if (49..=50).contains(&parsed_stage_identifier) { 
                     mapped_prefix_string = "PT"; 
                     target_folder_identifier = parsed_stage_identifier + 2; 
                 }
@@ -162,18 +168,17 @@ impl StageMatcher {
             if let Some(valid_prefix) = captured_prefix {
                 let mut constructed_path = base_stages_dir.join(Self::format_prefix(valid_prefix)).join(format!("{:03}", parsed_map_identifier));
                 
-                if let Some(stage_capture) = regex_captures.get(3) {
-                    if let Ok(parsed_stage_identifier) = stage_capture.as_str().parse::<u32>() {
+                if let Some(stage_capture) = regex_captures.get(3)
+                    && let Ok(parsed_stage_identifier) = stage_capture.as_str().parse::<u32>() {
                         constructed_path = constructed_path.join(format!("{:02}", parsed_stage_identifier));
                     }
-                }
                 return Some(constructed_path);
             } else {
                 let mut fallback_prefix_string = "EC";
                 let target_folder_identifier = parsed_map_identifier;
                 
                 if parsed_map_identifier == 48 { fallback_prefix_string = "M"; } 
-                if parsed_map_identifier >= 51 && parsed_map_identifier <= 52 { fallback_prefix_string = "PT"; }
+                if (51..=52).contains(&parsed_map_identifier) { fallback_prefix_string = "PT"; }
                 
                 return Some(base_stages_dir.join(fallback_prefix_string).join("000").join(format!("{:02}", target_folder_identifier)));
             }
@@ -201,21 +206,18 @@ impl StageMatcher {
             if target_file_name.starts_with("fc000") { return None; } 
             return Some(base_stages_dir.join("castles").join(&regex_captures[1]));
         }
-        if let Some(regex_captures) = self.bg_map.captures(target_file_name) {
-            if let Ok(parsed_id) = regex_captures[1].parse::<u32>() { 
+        if let Some(regex_captures) = self.bg_map.captures(target_file_name)
+            && let Ok(parsed_id) = regex_captures[1].parse::<u32>() { 
                 return Some(base_stages_dir.join("backgrounds").join("maps").join(format!("{:03}", parsed_id))); 
             }
-        }
-        if let Some(regex_captures) = self.bg_battle.captures(target_file_name) {
-            if let Ok(parsed_id) = regex_captures[1].parse::<u32>() { 
+        if let Some(regex_captures) = self.bg_battle.captures(target_file_name)
+            && let Ok(parsed_id) = regex_captures[1].parse::<u32>() { 
                 return Some(base_stages_dir.join("backgrounds").join("battle").join(format!("{:03}", parsed_id))); 
             }
-        }
-        if let Some(regex_captures) = self.bg_effect.captures(target_file_name) {
-            if let Ok(parsed_id) = regex_captures[1].parse::<u32>() { 
+        if let Some(regex_captures) = self.bg_effect.captures(target_file_name)
+            && let Ok(parsed_id) = regex_captures[1].parse::<u32>() { 
                 return Some(base_stages_dir.join("backgrounds").join("effects").join(format!("{:03}", parsed_id))); 
             }
-        }
         if self.bg_data.is_match(target_file_name) { 
             return Some(base_stages_dir.join("backgrounds").join("effects").join("data")); 
         }

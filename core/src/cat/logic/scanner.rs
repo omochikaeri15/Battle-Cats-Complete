@@ -58,8 +58,8 @@ pub fn start_scan(config: ScannerConfig) -> Receiver<CatEntry> {
         let cats_directory = Path::new(paths::DIR_CATS);
         let priority = &config.language_priority;
 
-        let unitbuy_resolved = crate::global::resolver::get(cats_directory, &[paths::UNIT_BUY], priority).into_iter().next();
-        let unitlevel_resolved = crate::global::resolver::get(cats_directory, &[paths::UNIT_LEVEL], priority).into_iter().next();
+        let unitbuy_resolved = crate::global::resolver::get(cats_directory, [paths::UNIT_BUY], priority).into_iter().next();
+        let unitlevel_resolved = crate::global::resolver::get(cats_directory, [paths::UNIT_LEVEL], priority).into_iter().next();
         
         if unitbuy_resolved.is_none() || unitlevel_resolved.is_none() {
             return;
@@ -95,11 +95,10 @@ pub fn start_scan(config: ScannerConfig) -> Receiver<CatEntry> {
                 &config
             );
             
-            if let Some(c) = &cat {
-                if let Ok(sender) = stream_sender.lock() {
+            if let Some(c) = &cat
+                && let Ok(sender) = stream_sender.lock() {
                     let _ = sender.send(c.clone());
                 }
-            }
             
             cat
         }).collect();
@@ -119,8 +118,8 @@ pub fn scan_single(id: u32, config: &ScannerConfig) -> Option<CatEntry> {
     let cats_directory = Path::new(paths::DIR_CATS);
     let priority = &config.language_priority;
 
-    let unitbuy_resolved = crate::global::resolver::get(cats_directory, &[paths::UNIT_BUY], priority).into_iter().next();
-    let unitlevel_resolved = crate::global::resolver::get(cats_directory, &[paths::UNIT_LEVEL], priority).into_iter().next();
+    let unitbuy_resolved = crate::global::resolver::get(cats_directory, [paths::UNIT_BUY], priority).into_iter().next();
+    let unitlevel_resolved = crate::global::resolver::get(cats_directory, [paths::UNIT_LEVEL], priority).into_iter().next();
     if unitbuy_resolved.is_none() || unitlevel_resolved.is_none() { return None; }
 
     let curves = unitlevel::load_level_curves(cats_directory, priority);
@@ -157,7 +156,7 @@ pub fn process_cat_entry(
     let Some(stats_parent) = stats_path.parent() else { return None; };
     let Some(stats_name) = stats_path.file_name().and_then(|n| n.to_str()) else { return None; };
     
-    let resolved_stats = crate::global::resolver::get(stats_parent, &[stats_name], priority).into_iter().next();
+    let resolved_stats = crate::global::resolver::get(stats_parent, [stats_name], priority).into_iter().next();
 
     if !config.show_invalid_cats && resolved_stats.is_none() {
         return None;
@@ -175,22 +174,22 @@ pub fn process_cat_entry(
         
         let banner_stem = paths::image_stem(paths::AssetType::Banner, cat_id, form_idx, egg_ids);
         let banner_name = format!("{}.png", banner_stem);
-        let mut resolved_banner = crate::global::resolver::get(&dir, &[banner_name.as_str()], priority).into_iter().next();
+        let mut resolved_banner = crate::global::resolver::get(&dir, [banner_name.as_str()], priority).into_iter().next();
         
         if resolved_banner.is_none() && form_idx == 1 && egg_ids.1 != -1 {
             let fallback_stem = format!("udi{:03}_m00", egg_ids.1);
             let fallback_name = format!("{}.png", fallback_stem);
-            resolved_banner = crate::global::resolver::get(&dir, &[fallback_name.as_str()], priority).into_iter().next();
+            resolved_banner = crate::global::resolver::get(&dir, [fallback_name.as_str()], priority).into_iter().next();
         }
 
         let icon_stem = paths::image_stem(paths::AssetType::Icon, cat_id, form_idx, egg_ids);
         let icon_name = format!("{}.png", icon_stem);
-        let mut resolved_icon = crate::global::resolver::get(&dir, &[icon_name.as_str()], priority).into_iter().next();
+        let mut resolved_icon = crate::global::resolver::get(&dir, [icon_name.as_str()], priority).into_iter().next();
 
         if resolved_icon.is_none() && form_idx == 1 && egg_ids.1 != -1 {
             let fallback_stem = format!("uni{:03}_m00", egg_ids.1);
             let fallback_name = format!("{}.png", fallback_stem);
-            resolved_icon = crate::global::resolver::get(&dir, &[fallback_name.as_str()], priority).into_iter().next();
+            resolved_icon = crate::global::resolver::get(&dir, [fallback_name.as_str()], priority).into_iter().next();
         }
 
         let mut form_valid = false;
@@ -219,12 +218,12 @@ pub fn process_cat_entry(
             let dir = paths::folder(cats_root_dir, cat_id, form_idx, egg_ids);
             let banner_stem = paths::image_stem(paths::AssetType::Banner, cat_id, form_idx, egg_ids);
             let banner_name = format!("{}.png", banner_stem);
-            let mut b = crate::global::resolver::get(&dir, &[banner_name.as_str()], priority).into_iter().next();
+            let mut b = crate::global::resolver::get(&dir, [banner_name.as_str()], priority).into_iter().next();
             
             if b.is_none() && form_idx == 1 && egg_ids.1 != -1 {
                 let fallback_stem = format!("udi{:03}_m00", egg_ids.1);
                 let fallback_name = format!("{}.png", fallback_stem);
-                b = crate::global::resolver::get(&dir, &[fallback_name.as_str()], priority).into_iter().next();
+                b = crate::global::resolver::get(&dir, [fallback_name.as_str()], priority).into_iter().next();
             }
             final_image_path_opt = b;
             break;
@@ -236,20 +235,18 @@ pub fn process_cat_entry(
         if !forms_existence[i] { continue; }
         let p = paths::maanim(cats_root_dir, cat_id, i, egg_ids, 2);
         
-        if let (Some(parent), Some(name)) = (p.parent(), p.file_name().and_then(|n| n.to_str())) {
-            if let Some(resolved) = crate::global::resolver::get(parent, &[name], priority).into_iter().next() {
-                if let Ok(bytes) = fs::read(&resolved) {
+        if let (Some(parent), Some(name)) = (p.parent(), p.file_name().and_then(|n| n.to_str()))
+            && let Some(resolved) = crate::global::resolver::get(parent, [name], priority).into_iter().next()
+                && let Ok(bytes) = fs::read(&resolved) {
                     let content = String::from_utf8_lossy(&bytes);
                     let duration = Animation::scan_duration(&content);
                     attack_anim_frames[i] = if duration > 0 { duration + 1 } else { 0 };
                 }
-            }
-        }
     }
 
     let mut cat_stats = vec![None; 4];
-    if let Some(resolved) = resolved_stats {
-        if let Ok(bytes) = fs::read(&resolved) {
+    if let Some(resolved) = resolved_stats
+        && let Ok(bytes) = fs::read(&resolved) {
 
             // THE WAITER HAND-OFF: Pass raw bytes to the pure nyanko engine
             if let Ok(parsed_profiles) = Battle::parse(&bytes) {
@@ -260,7 +257,6 @@ pub fn process_cat_entry(
             }
 
         }
-    }
 
     let explanation = unitexplanation::load(cat_id, original_folder_path, priority);
     let cat_names = explanation.names.to_vec();
@@ -279,7 +275,7 @@ pub fn process_cat_entry(
         egg_ids, 
         talent_data: talents_map.get(&(cat_id as u16)).cloned(),
         unitbuy: ub_row.clone(),
-        evolve_text: evolve_text_map.get(&(cat_id as u32)).cloned().unwrap_or_default(),
+        evolve_text: evolve_text_map.get(&{ cat_id }).cloned().unwrap_or_default(),
         talent_costs: Arc::clone(talent_costs),
         skill_descriptions: Arc::clone(skill_descriptions),
     })

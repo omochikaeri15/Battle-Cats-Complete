@@ -30,6 +30,7 @@ impl Clone for SpriteSheet {
     }
 }
 
+#[derive(Default)]
 pub struct SpriteSheet {
     pub image_data: Option<Arc<image::RgbaImage>>,
     pub cuts_map: HashMap<usize, SpriteCut>,
@@ -38,17 +39,6 @@ pub struct SpriteSheet {
     pub sheet_name: String,
 }
 
-impl Default for SpriteSheet {
-    fn default() -> Self {
-        Self {
-            image_data: None,
-            cuts_map: HashMap::new(),
-            is_loading_active: false,
-            data_receiver: None,
-            sheet_name: String::new(),
-        }
-    }
-}
 
 impl SpriteSheet {
     #[allow(dead_code)]
@@ -74,16 +64,14 @@ impl SpriteSheet {
     }
 
     pub fn update(&mut self) {
-        if let Some(mutex) = &self.data_receiver {
-            if let Ok(receiver) = mutex.try_lock() {
-                if let Ok((name, image, cuts)) = receiver.try_recv() {
+        if let Some(mutex) = &self.data_receiver
+            && let Ok(receiver) = mutex.try_lock()
+                && let Ok((name, image, cuts)) = receiver.try_recv() {
                     self.sheet_name = name.clone();
                     self.image_data = Some(Arc::new(image));
                     self.cuts_map = cuts;
                     self.is_loading_active = false;
                 }
-            }
-        }
 
         if !self.is_loading_active && self.data_receiver.is_some() {
             self.data_receiver = None;
@@ -107,13 +95,12 @@ impl SpriteSheet {
 
         for (index, line) in lines.iter().enumerate() {
             if !line.contains(',') {
-                if let Ok(count_val) = line.trim().parse::<usize>() {
-                    if count_val > 0 && count_val < 5000 {
+                if let Ok(count_val) = line.trim().parse::<usize>()
+                    && count_val > 0 && count_val < 5000 {
                         sprite_count = count_val;
                         data_start_index = index + 1;
                         found_header = true;
                     }
-                }
             } else if found_header {
                 break;
             }
@@ -133,8 +120,8 @@ impl SpriteSheet {
             let line = lines[line_index];
             let parts: Vec<&str> = line.split(delimiter).collect();
 
-            if parts.len() >= 4 {
-                if let (Ok(x), Ok(y), Ok(cut_width), Ok(cut_height)) = (
+            if parts.len() >= 4
+                && let (Ok(x), Ok(y), Ok(cut_width), Ok(cut_height)) = (
                     parts[0].trim().parse::<f32>(),
                     parts[1].trim().parse::<f32>(),
                     parts[2].trim().parse::<f32>(),
@@ -155,7 +142,6 @@ impl SpriteSheet {
                         name: cut_name,
                     });
                 }
-            }
         }
 
         Some((image, parsed_cuts))

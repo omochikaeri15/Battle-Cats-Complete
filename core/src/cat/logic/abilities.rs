@@ -30,16 +30,15 @@ pub fn collect_ability_data(
             };
 
             if let Some(border) = check_id(ability_id) { return Some(border); }
-            if ability_id == 23 { if let Some(border) = check_id(48) { return Some(border); } }
+            if ability_id == 23 && let Some(border) = check_id(48) { return Some(border); }
 
             if is_trait_id(ability_id) {
                 for (idx, group) in data.groups.iter().enumerate() {
                     let lv = *levels.get(&(idx as u8)).unwrap_or(&0);
-                    if lv > 0 {
-                        if enables_trait(group.name_id, data.type_id, ability_id) {
+                    if lv > 0
+                        && enables_trait(group.name_id, data.type_id, ability_id) {
                             return Some(img015::BORDER_GOLD);
                         }
-                    }
                 }
             }
         }

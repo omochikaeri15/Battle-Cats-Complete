@@ -53,11 +53,10 @@ pub fn text_with_superscript(ui: &mut egui::Ui, text: &str) {
     let mut parts = text.split('^');
 
     // First part is always standard text before any ^ character
-    if let Some(first) = parts.next() {
-        if !first.is_empty() {
+    if let Some(first) = parts.next()
+        && !first.is_empty() {
             job.append(first, 0.0, normal_format.clone());
         }
-    }
 
     // Subsequent parts start as superscript, and revert to normal at the first space or newline
     for part in parts {
@@ -94,7 +93,7 @@ impl DragGuard {
         let (pointer_pos, mouse_down) = ctx.input(|i| {
             (i.pointer.interact_pos(), i.pointer.primary_down())
         });
-        let in_window = pointer_pos.map_or(false, |p| screen_rect.contains(p));
+        let in_window = pointer_pos.is_some_and(|p| screen_rect.contains(p));
 
         if !mouse_down {
             self.broken = false;

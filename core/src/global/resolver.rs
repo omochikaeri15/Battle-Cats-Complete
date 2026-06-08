@@ -67,13 +67,11 @@ where
 
 fn check_mod_override(filename: &str) -> Option<PathBuf> {
     // 1. Check RAM Cache First (Instant)
-    if let Ok(cache) = OVERRIDE_CACHE.read() {
-        if let Some(map) = cache.as_ref() {
-            if let Some(cached_result) = map.get(filename) {
+    if let Ok(cache) = OVERRIDE_CACHE.read()
+        && let Some(map) = cache.as_ref()
+            && let Some(cached_result) = map.get(filename) {
                 return cached_result.clone();
             }
-        }
-    }
 
     let active_mod = {
         let guard = ACTIVE_MOD.read().ok()?;
@@ -96,11 +94,10 @@ fn check_mod_override(filename: &str) -> Option<PathBuf> {
         }
     }
 
-    if let Ok(mut cache) = OVERRIDE_CACHE.write() {
-        if let Some(map) = cache.as_mut() {
+    if let Ok(mut cache) = OVERRIDE_CACHE.write()
+        && let Some(map) = cache.as_mut() {
             map.insert(filename.to_string(), found_path.clone());
         }
-    }
 
     found_path
 }

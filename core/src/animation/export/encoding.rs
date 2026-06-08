@@ -154,7 +154,7 @@ pub fn encode_native(
                 match message {
                     EncoderMessage::Frame(raw_pixels, width, height, _) => {
                         let image_data = prepare_image(raw_pixels, width, height, config.background);
-                        let current_frame = config.start_frame + (frame_index as i32 * step_direction);
+                        let current_frame = config.start_frame + (frame_index * step_direction);
                         let entry_name = format!("{}.{}f.png", config.base_name, current_frame);
 
                         let _ = zip_writer.start_file(entry_name, zip_options);

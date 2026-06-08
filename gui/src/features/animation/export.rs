@@ -37,19 +37,18 @@ pub fn show_popup(
     }
 
     match state.format {
-        ExportFormat::Mp4 | ExportFormat::Mkv | ExportFormat::Webm | ExportFormat::Png => {
-            if is_ffmpeg_missing {
+        ExportFormat::Mp4 | ExportFormat::Mkv | ExportFormat::Webm | ExportFormat::Png
+            if is_ffmpeg_missing => {
                 state.format = ExportFormat::Gif;
-            }
-        },
+            },
         _ => {}
     }
 
     // EXPORT STATUS POLLING
     if state.is_processing {
         ui.ctx().request_repaint_after(Duration::from_millis(100));
-        if let Ok(receiver_lock) = STATUS_RX.lock() {
-            if let Some(receiver) = receiver_lock.as_ref() {
+        if let Ok(receiver_lock) = STATUS_RX.lock()
+            && let Some(receiver) = receiver_lock.as_ref() {
                 while let Ok(status_message) = receiver.try_recv() {
                     match status_message {
                         EncoderStatus::Encoding => { },
@@ -62,7 +61,6 @@ pub fn show_popup(
                     }
                 }
             }
-        }
     }
 
     // LOOP SEARCH STATUS POLLING
@@ -339,15 +337,12 @@ fn render_content(
                     ui.add_enabled_ui(!state.is_processing, |ui| {
                         // CHECK FOR LOOP TERMINATION
                         let mut is_loop_terminated = false;
-                        if let Some(loop_message) = &state.loop_result_msg {
-                            if loop_message.contains("Terminated") || loop_message.contains("Aborted") {
-                                if let Some(done_time) = state.completion_time {
-                                    if ui.input(|input| input.time) - done_time < 3.0 {
+                        if let Some(loop_message) = &state.loop_result_msg
+                            && (loop_message.contains("Terminated") || loop_message.contains("Aborted"))
+                                && let Some(done_time) = state.completion_time
+                                    && ui.input(|input| input.time) - done_time < 3.0 {
                                         is_loop_terminated = true;
                                     }
-                                }
-                            }
-                        }
 
                         let search_context = ui.ctx().clone();
                         let mut trigger_search = || {
@@ -355,18 +350,16 @@ fn render_content(
                             let Some(animation_arc) = animation.clone() else { return; };
 
                             let mut parsed_tolerance = 30;
-                            if !state.loop_tolerance_str.is_empty() {
-                                if let Ok(val) = state.loop_tolerance_str.parse() {
+                            if !state.loop_tolerance_str.is_empty()
+                                && let Ok(val) = state.loop_tolerance_str.parse() {
                                     parsed_tolerance = val;
                                 }
-                            }
 
                             let mut parsed_minimum = 15;
-                            if !state.loop_min_str.is_empty() {
-                                if let Ok(val) = state.loop_min_str.parse() {
+                            if !state.loop_min_str.is_empty()
+                                && let Ok(val) = state.loop_min_str.parse() {
                                     parsed_minimum = val;
                                 }
-                            }
 
                             state.loop_tolerance = parsed_tolerance;
                             state.loop_min = parsed_minimum;
@@ -526,13 +519,11 @@ fn render_content(
                             ];
 
                             for target_index in target_indices {
-                                if let Some((_, path)) = available_anims.iter().find(|(idx, _)| *idx == target_index) {
-                                    if let Ok(file_bytes) = std::fs::read(path) {
-                                        if let Some(parsed_animation) = Anim::parse(&file_bytes) {
+                                if let Some((_, path)) = available_anims.iter().find(|(idx, _)| *idx == target_index)
+                                    && let Ok(file_bytes) = std::fs::read(path)
+                                        && let Some(parsed_animation) = Anim::parse(&file_bytes) {
                                             showcase_anims.push(parsed_animation);
                                         }
-                                    }
-                                }
                             }
 
                             // Map them to references for the engine API
@@ -545,8 +536,8 @@ fn render_content(
                         }
 
                         // The library computes the union of ALL provided animations
-                        if !animation_references.is_empty() {
-                            if let Some((x, y, width, height)) = unit_data.calculate_bounds(&animation_references, tolerance_level) {
+                        if !animation_references.is_empty()
+                            && let Some((x, y, width, height)) = unit_data.calculate_bounds(&animation_references, tolerance_level) {
                                 state.region_x = x;
                                 state.region_y = y;
                                 state.region_w = width;
@@ -554,7 +545,6 @@ fn render_content(
                                 state.zoom = 1.0;
                                 was_calculated = true;
                             }
-                        }
                     }
 
                     if !was_calculated {
@@ -920,15 +910,12 @@ fn render_content(
             let is_enabled = !state.is_loop_searching && is_valid;
 
             let mut is_export_terminated = false;
-            if let Some(message) = &state.export_result_msg {
-                if message.contains("Terminated") || message.contains("Aborted") {
-                    if let Some(done_time) = state.completion_time {
-                        if ui.input(|input| input.time) - done_time < 3.0 {
+            if let Some(message) = &state.export_result_msg
+                && (message.contains("Terminated") || message.contains("Aborted"))
+                    && let Some(done_time) = state.completion_time
+                        && ui.input(|input| input.time) - done_time < 3.0 {
                             is_export_terminated = true;
                         }
-                    }
-                }
-            }
 
             let mut trigger_export = || {
                 start_export(state);

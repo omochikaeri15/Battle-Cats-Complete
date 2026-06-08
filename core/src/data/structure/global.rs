@@ -16,6 +16,12 @@ pub struct GlobalMatcher {
     audio_caf: Regex,
 }
 
+impl Default for GlobalMatcher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GlobalMatcher {
     pub fn new() -> Self {
         Self {

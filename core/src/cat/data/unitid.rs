@@ -14,7 +14,7 @@ pub fn load_from_id(cat_id: i32, priority: &[String]) -> Option<Vec<Battle>> {
     let base_dir = path_object.parent()?;
     let file_name = path_object.file_name()?.to_str()?;
 
-    let resolved_path = crate::global::resolver::get(base_dir, &[file_name], priority).into_iter().next()?;
+    let resolved_path = crate::global::resolver::get(base_dir, [file_name], priority).into_iter().next()?;
 
     // Read bytes from disk
     let bytes = fs::read(resolved_path).ok()?;

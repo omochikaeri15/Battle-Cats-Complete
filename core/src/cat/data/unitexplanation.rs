@@ -18,7 +18,7 @@ pub fn load(cat_id: u32, original_folder_path: &Path, priority: &[String]) -> Un
 
     // Iterate through the directories
     for dir in search_dirs {
-        let resolved_paths = crate::global::resolver::get(&dir, &[base_filename.as_str()], priority);
+        let resolved_paths = crate::global::resolver::get(&dir, [base_filename.as_str()], priority);
 
         for file_path in resolved_paths {
             if let Ok(bytes) = fs::read(&file_path) {

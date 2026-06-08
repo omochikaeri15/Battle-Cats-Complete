@@ -178,6 +178,6 @@ pub fn encode(
         return false;
     }
 
-    let did_process_succeed = child_process.wait().map(|status| status.success()).unwrap_or(false);
-    did_process_succeed
+    
+    child_process.wait().map(|status| status.success()).unwrap_or(false)
 }

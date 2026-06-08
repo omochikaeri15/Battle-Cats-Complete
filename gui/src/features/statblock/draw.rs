@@ -76,8 +76,8 @@ pub fn get_icon_image(
         icon = image::imageops::resize(&icon, export_size, export_size, image::imageops::FilterType::Lanczos3);
     }
 
-    if let Some(border_id) = item.border_id {
-        if let Some(cut) = cuts_map.get(&border_id) {
+    if let Some(border_id) = item.border_id
+        && let Some(cut) = cuts_map.get(&border_id) {
             let px = (cut.uv_coordinates.min.x * img015_base.width() as f32).round() as u32;
             let py = (cut.uv_coordinates.min.y * img015_base.height() as f32).round() as u32;
             let pw = cut.original_size.x.round() as u32;
@@ -91,7 +91,6 @@ pub fn get_icon_image(
                 image::imageops::overlay(&mut icon, &border, 0, 0);
             }
         }
-    }
     icon
 }
 
@@ -99,9 +98,8 @@ pub fn measure_text_with_superscript(scale: PxScale, font: &impl ab_glyph::Font,
     let mut total_w = 0;
     let mut parts = text.split('^');
     
-    if let Some(first) = parts.next() {
-        if !first.is_empty() { total_w += text_size(scale, font, first).0; }
-    }
+    if let Some(first) = parts.next()
+        && !first.is_empty() { total_w += text_size(scale, font, first).0; }
 
     for part in parts {
         if let Some(space_idx) = part.find(' ') {
@@ -123,12 +121,11 @@ pub fn draw_text_with_superscript(
     img: &mut RgbaImage, color: Rgba<u8>, mut x: i32, y: i32, base_scale: PxScale, font: &impl ab_glyph::Font, text: &str,
 ) {
     let mut parts = text.split('^');
-    if let Some(first) = parts.next() {
-        if !first.is_empty() {
+    if let Some(first) = parts.next()
+        && !first.is_empty() {
             draw_text_mut(img, color, x, y, base_scale, font, first);
             x += text_size(base_scale, font, first).0 as i32;
         }
-    }
 
     let s_scale = PxScale::from(base_scale.y * SUPERSCRIPT_SCALE);
     let s_y = y - (base_scale.y * SUPERSCRIPT_OFFSET_Y) as i32;
@@ -167,7 +164,7 @@ fn process_paragraph(paragraph: &str, font: &impl ab_glyph::Font, scale: PxScale
     let mut cur_word = String::new();
     
     for c in paragraph.chars() {
-        let is_cjk = (c >= '\u{4E00}' && c <= '\u{9FFF}') || (c >= '\u{3040}' && c <= '\u{30FF}') || (c >= '\u{AC00}' && c <= '\u{D7AF}');
+        let is_cjk = ('\u{4E00}'..='\u{9FFF}').contains(&c) || ('\u{3040}'..='\u{30FF}').contains(&c) || ('\u{AC00}'..='\u{D7AF}').contains(&c);
         
         if c.is_whitespace() || is_cjk {
             if !cur_word.is_empty() {
@@ -228,7 +225,7 @@ pub fn draw_time_cell(
     let scale_f_text = PxScale::from(15.0 * 0.65 * text_scale * scale_f); 
     
     let sec_w = text_size(scale_sec, font, &sec_str).0;
-    let gap = 1 * scale_i as u32;
+    let gap = scale_i as u32;
     let total_w = sec_w + text_size(scale_f_text, font, &f_str).0 + gap;
 
     let start_x = rect.left() + (rect.width() as i32 - total_w as i32) / 2;

@@ -162,13 +162,12 @@ fn render_header(
                     },
                     core::cat::registry::AbilityIcon::Standard(icon_id) => {
                         for sheet in sheets {
-                            if let Some(cut) = sheet.core.cuts_map.get(&icon_id) {
-                                if let Some(tex) = &sheet.texture_handle {
+                            if let Some(cut) = sheet.core.cuts_map.get(&icon_id)
+                                && let Some(tex) = &sheet.texture_handle {
                                     ui.add(egui::Image::new(egui::load::SizedTexture::new(tex.id(), size)).uv(egui::Rect::from_min_max(egui::pos2(cut.uv_coordinates.min.x, cut.uv_coordinates.min.y), egui::pos2(cut.uv_coordinates.max.x, cut.uv_coordinates.max.y))));
                                     drawn = true;
                                     break;
                                 }
-                            }
                         }
                     },
                     core::cat::registry::AbilityIcon::None => {}
@@ -185,7 +184,7 @@ fn render_header(
                 ui.image((texture.id(), texture.size_vec2()));
             } else {
                 let fallback_text = match &def_opt {
-                    Some(def) => format!("{}", core::cat::registry::get_display_def(def.identity).name),
+                    Some(def) => core::cat::registry::get_display_def(def.identity).name.to_string(),
                     None => format!("Unknown Skill (ID: {})", group.ability_id),
                 };
                 ui.label(
@@ -264,15 +263,14 @@ fn render_body(
 
                 let mut drawn = false;
                 for sheet in img022_sheets {
-                    if let Some(cut) = sheet.core.cuts_map.get(&core::global::game::img022::ICON_NP_COST) {
-                        if let Some(tex) = &sheet.texture_handle {
+                    if let Some(cut) = sheet.core.cuts_map.get(&core::global::game::img022::ICON_NP_COST)
+                        && let Some(tex) = &sheet.texture_handle {
                             let aspect = cut.original_size.x / cut.original_size.y;
                             let size = egui::vec2(TALENT_NP_ICON_SIZE * aspect, TALENT_NP_ICON_SIZE);
                             ui.add(egui::Image::new(egui::load::SizedTexture::new(tex.id(), size)).uv(egui::Rect::from_min_max(egui::pos2(cut.uv_coordinates.min.x, cut.uv_coordinates.min.y), egui::pos2(cut.uv_coordinates.max.x, cut.uv_coordinates.max.y))));
                             drawn = true;
                             break;
                         }
-                    }
                 }
 
                 if !drawn {
@@ -321,8 +319,8 @@ fn render_body(
                     );
                 });
 
-                if let Some(stats) = current_stats {
-                    if let Some(display_text) = talents::calculate_talent_display(group, stats, *current_level_mut, curve, unit_level) {
+                if let Some(stats) = current_stats
+                    && let Some(display_text) = talents::calculate_talent_display(group, stats, *current_level_mut, curve, unit_level) {
                         ui.add_space(4.0);
                         ui.label(
                             egui::RichText::new(display_text)
@@ -331,7 +329,6 @@ fn render_body(
                                 .strong()
                         );
                     }
-                }
             });
         });
 }
@@ -348,8 +345,8 @@ fn get_or_load_skill_name(
     let path = find_skill_image_path(image_id, settings)?;
     let file_name = path.file_name()?.to_string_lossy().to_string();
 
-    if !name_cache.contains_key(&file_name) {
-        if let Ok(img) = image::open(&path) {
+    if !name_cache.contains_key(&file_name)
+        && let Ok(img) = image::open(&path) {
             let rgba = autocrop(img.to_rgba8());
             let texture = ui.ctx().load_texture(
                 &file_name,
@@ -361,7 +358,6 @@ fn get_or_load_skill_name(
             );
             name_cache.insert(file_name.clone(), texture);
         }
-    }
 
     name_cache.get(&file_name).cloned()
 }
@@ -369,5 +365,5 @@ fn get_or_load_skill_name(
 fn find_skill_image_path(image_id: i16, settings: &Settings) -> Option<PathBuf> {
     let dir = Path::new(paths::DIR_SKILL_NAME);
     let base_filename = format!("Skill_name_{:03}.png", image_id);
-    core::global::get(dir, &[base_filename.as_str()], &settings.general.language_priority).into_iter().next()
+    core::global::get(dir, [base_filename.as_str()], &settings.general.language_priority).into_iter().next()
 }

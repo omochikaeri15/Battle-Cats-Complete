@@ -21,8 +21,8 @@ impl GuiWatcher {
         });
 
         let mut watcher = notify::recommended_watcher(move |res: notify::Result<Event>| {
-            if let Ok(event) = res {
-                if !matches!(event.kind, notify::EventKind::Access(_)) {
+            if let Ok(event) = res
+                && !matches!(event.kind, notify::EventKind::Access(_)) {
                     for path in event.paths {
                         let path_str = path.to_string_lossy().to_lowercase();
                         if path_str.contains("raw") { continue; }
@@ -31,17 +31,15 @@ impl GuiWatcher {
                         if let Some(mods_idx) = components.iter().position(|c| c == "mods") {
                             // mods_idx + 1 = The Mod Name
                             // mods_idx + 2 = The Subfolder (patch, icons, loose, or background junk)
-                            if let Some(sub_folder) = components.get(mods_idx + 2) {
-                                if sub_folder != "patch" && sub_folder != "icons" && sub_folder != "loose" {
+                            if let Some(sub_folder) = components.get(mods_idx + 2)
+                                && sub_folder != "patch" && sub_folder != "icons" && sub_folder != "loose" {
                                     continue; // Drop the event entirely
                                 }
-                            }
                         }
 
                         let _ = internal_tx.send(path);
                     }
                 }
-            }
         }).ok()?;
 
         let path = Path::new("game");

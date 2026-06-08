@@ -6,7 +6,9 @@ use crate::global::resolver;
 use crate::global::utils::detect_csv_separator;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum ResetType {
+    #[default]
     None,
     ResetRewards,
     ResetRewardsAndClear,
@@ -26,9 +28,6 @@ impl From<u8> for ResetType {
     }
 }
 
-impl Default for ResetType {
-    fn default() -> Self { Self::None }
-}
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct MapOption {
@@ -45,7 +44,7 @@ pub struct MapOption {
 
 pub fn load(dir: &Path, filename: &str, priority: &[String]) -> HashMap<u32, MapOption> {
     let mut map = HashMap::new();
-    let paths = resolver::get(dir, &[filename], priority);
+    let paths = resolver::get(dir, [filename], priority);
     
     let Some(path) = paths.first() else { return map; };
     let Ok(content) = fs::read_to_string(path) else { return map; };

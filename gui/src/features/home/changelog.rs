@@ -13,6 +13,7 @@ const HEADER_SPACING_Y: f32 = 6.0;
 const LABEL_OFFSET_Y: f32 = 7.0;
 
 #[derive(Clone)]
+#[derive(Default)]
 struct ChangelogState {
     is_open: bool,
     is_loading: bool,
@@ -23,19 +24,6 @@ struct ChangelogState {
     fetch_start: Option<Instant>,
 }
 
-impl Default for ChangelogState {
-    fn default() -> Self {
-        Self {
-            is_open: false,
-            is_loading: false,
-            fetched: false,
-            releases: Vec::new(),
-            selected_version: String::new(),
-            error: false,
-            fetch_start: None,
-        }
-    }
-}
 
 pub fn link(ui: &mut egui::Ui, ctx: &egui::Context) {
     if ui.link("Changelogs").clicked() {
@@ -117,7 +105,7 @@ pub fn window(ctx: &egui::Context, drag_guard: &mut DragGuard) {
         let mut locked = state.lock().unwrap();
         
         if locked.is_open {
-            let time_expired = locked.fetch_start.map_or(false, |t| t.elapsed().as_secs_f32() > 3.0);
+            let time_expired = locked.fetch_start.is_some_and(|t| t.elapsed().as_secs_f32() > 3.0);
             let should_show_window = locked.fetched || time_expired;
 
             if should_show_window {

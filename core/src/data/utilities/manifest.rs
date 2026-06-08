@@ -19,11 +19,10 @@ pub struct PackRecord {
 }
 
 pub fn load<T: DeserializeOwned + Default>(path: &Path) -> T {
-    if let Ok(file) = File::open(path) {
-        if let Ok(manifest) = serde_json::from_reader(BufReader::new(file)) {
+    if let Ok(file) = File::open(path)
+        && let Ok(manifest) = serde_json::from_reader(BufReader::new(file)) {
             return manifest;
         }
-    }
     T::default()
 }
 

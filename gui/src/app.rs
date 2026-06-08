@@ -62,8 +62,8 @@ impl eframe::App for BattleCatsApp {
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        if let Some(rx) = &self.hash_rx {
-            if let Ok(is_valid) = rx.try_recv() {
+        if let Some(rx) = &self.hash_rx
+            && let Ok(is_valid) = rx.try_recv() {
                 self.hash_rx = None;
                 if !is_valid {
                     self.perform_full_data_reload();
@@ -73,7 +73,6 @@ impl eframe::App for BattleCatsApp {
                     self.enemy_list_state.enemy_list.force_search_rebuild();
                 }
             }
-        }
 
         self.updater.update_state(ctx);
         

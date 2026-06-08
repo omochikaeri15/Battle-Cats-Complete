@@ -30,7 +30,7 @@ pub fn start_export(state: &mut ModDataState, settings: &Settings) {
     let Some(input_apk_path) = state.export.selected_apk.clone() else {
         state.export.is_busy = false; return;
     };
-    let detected_region = state.export.target_region.clone();
+    let detected_region = state.export.target_region;
 
     let (transmitter, receiver) = mpsc::channel();
     if let Ok(mut guard) = EVENT_RECEIVER.lock() { *guard = Some(receiver); }
@@ -100,12 +100,11 @@ pub fn start_export(state: &mut ModDataState, settings: &Settings) {
                 if let Ok(mut output_file) = fs::File::create(&manifest_path) {
                     let _ = std::io::copy(&mut archive_file, &mut output_file);
                 }
-            } else if file_name == "resources.arsc" {
-                if let Ok(mut output_file) = fs::File::create(&arsc_path) {
+            } else if file_name == "resources.arsc"
+                && let Ok(mut output_file) = fs::File::create(&arsc_path) {
                     let _ = std::io::copy(&mut archive_file, &mut output_file);
                     extracted_arsc = true;
                 }
-            }
         }
         drop(archive);
 
@@ -121,14 +120,13 @@ pub fn start_export(state: &mut ModDataState, settings: &Settings) {
         let root_elem = apk_editor.manifest.root.get_element(&["manifest"], &apk_editor.manifest.string_pool);
         let pkg_attr = root_elem.and_then(|root| root.get_attribute("package", &apk_editor.manifest.string_pool));
 
-        if let Some(attr) = pkg_attr {
-            if let ResValueType::String(ref string_value) = attr.typed_value.data {
-                let current_pkg = string_value.resolve(&mut apk_editor.manifest.string_pool).unwrap_or_default().to_string();
+        if let Some(attr) = pkg_attr
+            && let ResValueType::String(ref string_value) = attr.typed_value.data {
+                let current_pkg = string_value.resolve(&apk_editor.manifest.string_pool).unwrap_or_default().to_string();
                 if current_pkg == target_package {
                     is_update = true;
                 }
             }
-        }
 
         // Apply Patches (If Necessary)
         let final_id = if is_update {
@@ -195,7 +193,7 @@ pub fn start_export(state: &mut ModDataState, settings: &Settings) {
         // Output Routing
         let output_name = if app_title.trim().is_empty() { final_id } else { app_title.trim().to_string() };
 
-        let is_in_exports = input_apk_path.parent().map_or(false, |parent| {
+        let is_in_exports = input_apk_path.parent().is_some_and(|parent| {
             parent.canonicalize().unwrap_or_else(|_| parent.to_path_buf()) == export_dir.canonicalize().unwrap_or_else(|_| export_dir.clone())
         });
 

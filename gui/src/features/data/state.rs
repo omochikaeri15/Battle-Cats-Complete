@@ -37,9 +37,8 @@ pub fn censor_path(path_string: &str) -> String {
     if path_string.is_empty() || path_string == "No source selected" { return String::new(); }
 
     let mut clean_string = path_string.to_string();
-    if let Ok(username) = env::var("USERNAME").or_else(|_| env::var("USER")) {
-        if !username.is_empty() { clean_string = clean_string.replace(&username, "***"); }
-    }
+    if let Ok(username) = env::var("USERNAME").or_else(|_| env::var("USER"))
+        && !username.is_empty() { clean_string = clean_string.replace(&username, "***"); }
 
     let path_object = Path::new(&clean_string);
     let path_components: Vec<_> = path_object.components().map(|component| component.as_os_str().to_string_lossy()).collect();

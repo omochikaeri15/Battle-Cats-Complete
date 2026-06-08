@@ -63,14 +63,13 @@ pub fn start_scan(config: ScannerConfig) -> Receiver<EnemyEntry> {
             let icon_p = paths::icon(root, id_u32);
             let mut resolved_icon = None;
             if let (Some(parent), Some(name)) = (icon_p.parent(), icon_p.file_name().and_then(|n| n.to_str())) {
-                resolved_icon = crate::global::resolver::get(parent, &[name], priority).into_iter().next();
+                resolved_icon = crate::global::resolver::get(parent, [name], priority).into_iter().next();
             }
 
-            if let Some(ref p) = resolved_icon {
-                if is_placeholder_png(p) && !config.show_invalid_enemies {
+            if let Some(ref p) = resolved_icon
+                && is_placeholder_png(p) && !config.show_invalid_enemies {
                     resolved_icon = None;
                 }
-            }
 
             if resolved_icon.is_none() && !config.show_invalid_enemies {
                 return None;
@@ -78,15 +77,13 @@ pub fn start_scan(config: ScannerConfig) -> Receiver<EnemyEntry> {
 
             let mut atk_anim_frames = 0;
             let atk_p = paths::maanim(root, id_u32, 2);
-            if let (Some(parent), Some(name)) = (atk_p.parent(), atk_p.file_name().and_then(|n| n.to_str())) {
-                if let Some(resolved_atk) = crate::global::resolver::get(parent, &[name], priority).into_iter().next() {
-                    if let Ok(bytes) = fs::read(&resolved_atk) {
+            if let (Some(parent), Some(name)) = (atk_p.parent(), atk_p.file_name().and_then(|n| n.to_str()))
+                && let Some(resolved_atk) = crate::global::resolver::get(parent, [name], priority).into_iter().next()
+                    && let Ok(bytes) = fs::read(&resolved_atk) {
                         let content = String::from_utf8_lossy(&bytes);
                         let duration = Animation::scan_duration(&content);
                         atk_anim_frames = if duration > 0 { duration + 1 } else { 0 };
                     }
-                }
-            }
 
             let enemy = EnemyEntry {
                 id: id_u32, 
@@ -133,14 +130,13 @@ pub fn scan_single(id: u32, config: &ScannerConfig) -> Option<EnemyEntry> {
     let icon_p = paths::icon(root, id);
     let mut resolved_icon = None;
     if let (Some(parent), Some(name)) = (icon_p.parent(), icon_p.file_name().and_then(|n| n.to_str())) {
-        resolved_icon = crate::global::resolver::get(parent, &[name], priority).into_iter().next();
+        resolved_icon = crate::global::resolver::get(parent, [name], priority).into_iter().next();
     }
 
-    if let Some(ref p) = resolved_icon {
-        if is_placeholder_png(p) && !config.show_invalid_enemies {
+    if let Some(ref p) = resolved_icon
+        && is_placeholder_png(p) && !config.show_invalid_enemies {
             resolved_icon = None;
         }
-    }
 
     if resolved_icon.is_none() && !config.show_invalid_enemies {
         return None;
@@ -150,15 +146,14 @@ pub fn scan_single(id: u32, config: &ScannerConfig) -> Option<EnemyEntry> {
     let atk_p = paths::maanim(root, id, 2);
     
     if let (Some(parent), Some(name)) = (atk_p.parent(), atk_p.file_name().and_then(|n| n.to_str())) {
-        let resolved_atk = crate::global::resolver::get(parent, &[name], priority).into_iter().next();
+        let resolved_atk = crate::global::resolver::get(parent, [name], priority).into_iter().next();
         
-        if let Some(p) = resolved_atk {
-            if let Ok(bytes) = fs::read(&p) {
+        if let Some(p) = resolved_atk
+            && let Ok(bytes) = fs::read(&p) {
                 let content = String::from_utf8_lossy(&bytes);
                 let duration = Animation::scan_duration(&content);
                 atk_anim_frames = if duration > 0 { duration + 1 } else { 0 };
             }
-        }
     }
 
     Some(EnemyEntry { id, name, description, stats, icon_path: resolved_icon, atk_anim_frames })

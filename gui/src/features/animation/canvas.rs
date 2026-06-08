@@ -23,7 +23,7 @@ pub fn paint(
 
             if renderer_lock.is_none() {
                 // Safely handle the Result without unwrapping/panicking
-                let Ok(new_renderer) = GlowRenderer::new(&**painter.gl()) else {
+                let Ok(new_renderer) = GlowRenderer::new(painter.gl()) else {
                     return;
                 };
                 *renderer_lock = Some(new_renderer);
@@ -45,7 +45,7 @@ pub fn paint(
 
             // 2. Delegate hardware rendering to the core's canvas
             let _ = renderer.draw_frame(
-                &**painter.gl(),
+                painter.gl(),
                 &frame_geometry,
                 &unit.sheet,
                 viewport_width,

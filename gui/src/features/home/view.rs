@@ -51,7 +51,7 @@ pub fn show(ctx: &egui::Context, drag_guard: &mut DragGuard) {
                     egui::FontId::new(13.0, egui::FontFamily::Proportional),
                 );
                 
-                if ui.hyperlink_to("Discord", "https://discord.com/invite/SNSE8HNhmP").clicked() { }
+                ui.hyperlink_to("Discord", "https://discord.com/invite/SNSE8HNhmP").clicked();
                 ui.label("|");
                 ui.hyperlink_to("GitHub", "https://github.com/omochikaeri15/Battle-Cats-Complete");
             });

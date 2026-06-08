@@ -50,8 +50,8 @@ pub fn render(
             ui.add_space(3.0);
             render_info_box(ui, cat, *current_form, level_input, current_level);
 
-            if *current_tab == DetailTab::Talents {
-                if let Some(talent_data) = &cat.talent_data {
+            if *current_tab == DetailTab::Talents
+                && let Some(talent_data) = &cat.talent_data {
                     ui.add_space(15.0);
                     let separator_color = ui.visuals().widgets.noninteractive.bg_stroke.color;
                     let (rect, _) = ui.allocate_exact_size(egui::vec2(1.0, 85.0), egui::Sense::hover());
@@ -59,7 +59,6 @@ pub fn render(
                     ui.add_space(15.0);
                     render_talent_controls(ui, talent_data, talent_levels, talent_costs, img022_sheets);
                 }
-            }
 
             if *current_tab == DetailTab::Abilities {
                 ui.add_space(15.0);
@@ -149,15 +148,14 @@ fn render_talent_controls(
             
             let mut drawn = false;
             for sheet in img022_sheets {
-                if let Some(cut) = sheet.core.cuts_map.get(&core::global::game::img022::ICON_NP_COST) {
-                    if let Some(tex) = &sheet.texture_handle {
+                if let Some(cut) = sheet.core.cuts_map.get(&core::global::game::img022::ICON_NP_COST)
+                    && let Some(tex) = &sheet.texture_handle {
                         let aspect = cut.original_size.x / cut.original_size.y;
                         let size = egui::vec2(HEADER_NP_ICON_SIZE * aspect, HEADER_NP_ICON_SIZE);
                         ui.add(egui::Image::new(egui::load::SizedTexture::new(tex.id(), size)).uv(egui::Rect::from_min_max(egui::pos2(cut.uv_coordinates.min.x, cut.uv_coordinates.min.y), egui::pos2(cut.uv_coordinates.max.x, cut.uv_coordinates.max.y))));
                         drawn = true;
                         break;
                     }
-                }
             }
             
             if !drawn {

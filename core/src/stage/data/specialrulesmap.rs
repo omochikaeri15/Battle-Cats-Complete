@@ -50,7 +50,7 @@ struct RulesMap {
 
 pub fn load(dir: &Path, filename: &str, priority: &[String]) -> HashMap<u32, SpecialRule> {
     let mut map = HashMap::new();
-    let paths = resolver::get(dir, &[filename], priority);
+    let paths = resolver::get(dir, [filename], priority);
 
     let Some(path) = paths.first() else { return map; };
     let Ok(content) = fs::read_to_string(path) else { return map; };

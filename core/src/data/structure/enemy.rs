@@ -16,6 +16,12 @@ pub struct EnemyMatcher {
     zombie_effect: Regex,
 }
 
+impl Default for EnemyMatcher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EnemyMatcher {
     pub fn new() -> Self {
         Self {

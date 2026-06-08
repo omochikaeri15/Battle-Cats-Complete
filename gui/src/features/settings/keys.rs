@@ -94,8 +94,8 @@ pub fn show(context: &egui::Context, drag_guard: &mut DragGuard) {
                     if import_result { ("Loaded!", success_color) } else { ("Failed!", fail_color) }
                 } else { ("Load Keys", default_color) };
 
-                if ui_row.add_sized([button_width, button_height], egui::Button::new(egui::RichText::new(import_text).size(12.0).strong().color(egui::Color32::WHITE)).fill(import_color).rounding(4.0)).clicked() {
-                    if let Some(file_path) = rfd::FileDialog::new().pick_file() {
+                if ui_row.add_sized([button_width, button_height], egui::Button::new(egui::RichText::new(import_text).size(12.0).strong().color(egui::Color32::WHITE)).fill(import_color).rounding(4.0)).clicked()
+                    && let Some(file_path) = rfd::FileDialog::new().pick_file() {
                         let success = match fs::read_to_string(&file_path) {
                             Ok(file_data) => {
                                 if let Ok(parsed_keys) = serde_json::from_str::<UserKeys>(&file_data) {
@@ -112,7 +112,6 @@ pub fn show(context: &egui::Context, drag_guard: &mut DragGuard) {
                             data_map.insert_temp(egui::Id::new("keys_import_result"), success);
                         });
                     }
-                }
 
                 let export_time = context.data(|data_map| data_map.get_temp::<f64>(egui::Id::new("keys_export_time"))).unwrap_or(-10.0);
                 let export_result = context.data(|data_map| data_map.get_temp::<bool>(egui::Id::new("keys_export_result"))).unwrap_or(false);

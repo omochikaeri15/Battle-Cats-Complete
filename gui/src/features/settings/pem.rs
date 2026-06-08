@@ -70,14 +70,12 @@ pub fn show(context: &egui::Context, drag_guard: &mut DragGuard) {
     let mut thread_finished = false;
     let mut generated_pem_result = None;
 
-    if let Some(receiver_arc) = &state.receiver {
-        if let Ok(receiver_guard) = receiver_arc.try_lock() {
-            if let Ok(received_data) = receiver_guard.try_recv() {
+    if let Some(receiver_arc) = &state.receiver
+        && let Ok(receiver_guard) = receiver_arc.try_lock()
+            && let Ok(received_data) = receiver_guard.try_recv() {
                 generated_pem_result = received_data;
                 thread_finished = true;
             }
-        }
-    }
 
     if thread_finished {
         if let Some(new_pem) = generated_pem_result {
@@ -132,19 +130,16 @@ pub fn show(context: &egui::Context, drag_guard: &mut DragGuard) {
                 ).fill(default_blue).rounding(4.0);
 
                 ui_row.add_enabled_ui(!state.is_generating, |enabled_ui| {
-                    if enabled_ui.add_sized([button_width, button_height], import_button).clicked() {
-                        if let Some(file_path) = rfd::FileDialog::new().add_filter("PEM", &["pem", "txt"]).pick_file() {
-                            if let Ok(content) = fs::read_to_string(&file_path) {
-                                if content.contains("-----BEGIN PRIVATE KEY-----") && content.contains("-----BEGIN CERTIFICATE-----") {
+                    if enabled_ui.add_sized([button_width, button_height], import_button).clicked()
+                        && let Some(file_path) = rfd::FileDialog::new().add_filter("PEM", &["pem", "txt"]).pick_file()
+                            && let Ok(content) = fs::read_to_string(&file_path)
+                                && content.contains("-----BEGIN PRIVATE KEY-----") && content.contains("-----BEGIN CERTIFICATE-----") {
                                     let _ = pem::save_pem(&content);
                                     state.active_pem = content;
                                     state.is_custom = true;
                                     state.confirm_generate = false;
                                     state.confirm_delete = false;
                                 }
-                            }
-                        }
-                    }
                 });
                 
                 let (export_text, export_color) = if (current_time - state.export_time) < 2.0 {

@@ -6,7 +6,7 @@ use crate::global::utils::detect_csv_separator;
 
 pub fn load(dir: &Path, filename: &str, priority: &[String]) -> HashMap<u32, String> {
     let mut map = HashMap::new();
-    let paths = resolver::get(dir, &[filename], priority);
+    let paths = resolver::get(dir, [filename], priority);
     
     for path in paths.iter().rev() {
         let Ok(content) = fs::read_to_string(path) else { continue; };

@@ -22,7 +22,7 @@ pub fn spawn_mod_import(tx: Sender<ModAdbEvent>, suffix: String) {
         let _ = tx.send(ModAdbEvent::Status(format!("Targeting Package: {}", pkg)));
 
         // Locate Device
-        let serial = match driver::find_usb_device().or_else(|| driver::find_emulator()) {
+        let serial = match driver::find_usb_device().or_else(driver::find_emulator) {
             Some(s) => s,
             None => {
                 let _ = tx.send(ModAdbEvent::Error("No device found.".to_string()));

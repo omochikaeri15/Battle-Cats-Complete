@@ -80,13 +80,12 @@ pub fn render_conjure_details(
                 
                 let mut drawn = false;
                 for sheet in sheets {
-                    if let Some(cut) = sheet.core.cuts_map.get(&icon) {
-                        if let Some(tex) = &sheet.texture_handle {
+                    if let Some(cut) = sheet.core.cuts_map.get(&icon)
+                        && let Some(tex) = &sheet.texture_handle {
                              ui.add(egui::Image::new(egui::load::SizedTexture::new(tex.id(), size)).uv(egui::Rect::from_min_max(egui::pos2(cut.uv_coordinates.min.x, cut.uv_coordinates.min.y), egui::pos2(cut.uv_coordinates.max.x, cut.uv_coordinates.max.y))));
                              drawn = true;
                              break;
                         }
-                    }
                 }
                 if !drawn {
                     let alt = core::cat::registry::get_fallback_by_icon(core::cat::registry::AbilityIcon::Standard(icon));
@@ -140,9 +139,9 @@ pub fn build_spirit_data(
     ctx: &CatRenderContext,
     settings: &Settings
 ) -> Option<SpiritData> {
-    if ctx.base_stats.conjure_unit_id > 0 {
-        if let Some(c_vec) = stats::load_from_id(ctx.base_stats.conjure_unit_id, &settings.general.language_priority) {
-            if let Some(c_stats) = c_vec.first() {
+    if ctx.base_stats.conjure_unit_id > 0
+        && let Some(c_vec) = stats::load_from_id(ctx.base_stats.conjure_unit_id, &settings.general.language_priority)
+            && let Some(c_stats) = c_vec.first() {
                 let conjure_final = stats::get_final_stats(c_stats, ctx.level_curve, ctx.current_level, None, None);
                 
                 let spirit_ctx = CatRenderContext {
@@ -168,7 +167,5 @@ pub fn build_spirit_data(
                     footer: s_footer,
                 });
             }
-        }
-    }
     None
 }

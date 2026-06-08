@@ -5,7 +5,9 @@ use crate::global::resolver;
 use crate::global::utils::detect_csv_separator;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Default)]
 pub enum BossType {
+    #[default]
     None,
     Boss,
     ScreenShake,
@@ -23,19 +25,15 @@ impl From<u32> for BossType {
     }
 }
 
-impl Default for BossType {
-    fn default() -> Self { Self::None }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Default)]
 pub enum EnemyAmount {
+    #[default]
     Infinite,
     Limit(u32),
 }
 
-impl Default for EnemyAmount {
-    fn default() -> Self { Self::Infinite }
-}
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct StageRaw {
@@ -74,7 +72,7 @@ pub struct EnemyLine {
 }
 
 pub fn load(dir_path: &Path, filename: &str, lang_priority: &[String]) -> Option<StageRaw> {
-    let file_paths = resolver::get(dir_path, &[filename], lang_priority);
+    let file_paths = resolver::get(dir_path, [filename], lang_priority);
     let first_path = file_paths.first()?;
     let file_content = fs::read_to_string(first_path).ok()?;
     
@@ -91,18 +89,18 @@ fn parse(file_content: &str) -> StageRaw {
     let first_line = clean_lines.next().unwrap_or("");
     let first_line_parts: Vec<&str> = first_line.split(csv_separator).collect();
 
-    let has_header = first_line_parts.len() <= 7 || first_line_parts.get(6).map_or(true, |part| part.is_empty());
+    let has_header = first_line_parts.len() <= 7 || first_line_parts.get(6).is_none_or(|part| part.is_empty());
 
     let config_line = if !has_header {
         first_line
     } else {
-        stage_raw.base_id = first_line_parts.get(0).and_then(|part| part.parse().ok()).unwrap_or(0);
+        stage_raw.base_id = first_line_parts.first().and_then(|part| part.parse().ok()).unwrap_or(0);
         stage_raw.is_no_continues = first_line_parts.get(1) == Some(&"1");
         clean_lines.next().unwrap_or("")
     };
 
     let config_parts: Vec<&str> = config_line.split(csv_separator).collect();
-    stage_raw.width = config_parts.get(0).and_then(|part| part.parse().ok()).unwrap_or(0);
+    stage_raw.width = config_parts.first().and_then(|part| part.parse().ok()).unwrap_or(0);
     stage_raw.base_hp = config_parts.get(1).and_then(|part| part.parse().ok()).unwrap_or(0);
     stage_raw.min_spawn = config_parts.get(2).and_then(|part| part.parse().ok()).unwrap_or(0);
     stage_raw.max_spawn = config_parts.get(3).and_then(|part| part.parse().ok()).unwrap_or(stage_raw.min_spawn);
@@ -115,7 +113,7 @@ fn parse(file_content: &str) -> StageRaw {
 
     for enemy_line in clean_lines {
         let enemy_parts: Vec<&str> = enemy_line.split(csv_separator).collect();
-        let enemy_id = enemy_parts.get(0).and_then(|part| part.parse::<u32>().ok()).unwrap_or(0);
+        let enemy_id = enemy_parts.first().and_then(|part| part.parse::<u32>().ok()).unwrap_or(0);
         
         if enemy_id == 0 { break; }
 
@@ -137,7 +135,7 @@ fn parse(file_content: &str) -> StageRaw {
             atk_magnification = mag_percent;
         }
 
-        let actual_enemy_id = if enemy_id >= 2 { enemy_id - 2 } else { 0 };
+        let actual_enemy_id = enemy_id.saturating_sub(2);
         let start_frame = enemy_parts.get(2).and_then(|part| part.parse::<u32>().ok()).unwrap_or(0) * 2;
 
         let is_ms_sign_default = actual_enemy_id == 21 && start_frame == 27000;

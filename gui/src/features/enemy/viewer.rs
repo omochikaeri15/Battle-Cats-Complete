@@ -38,7 +38,7 @@ pub fn show(
                 let parent = p.parent()?;
                 let name = p.file_name()?.to_str()?;
                 let iname = format!("i{}", name);
-                core::global::get(parent, &[name, &iname], priority).into_iter().next()
+                core::global::get(parent, [name, &iname], priority).into_iter().next()
             };
 
             for idx in [IDX_WALK, IDX_IDLE, IDX_ATTACK, IDX_KB] {
@@ -63,6 +63,6 @@ pub fn show(
             c.2 = primary_assets;
         }
 
-        anim_viewer.show(ui, ctx, &c.0, &String::new(), &c.1, c.2.clone(), None, unit_sync, settings, drag_guard);
+        anim_viewer.show(ui, ctx, &c.0, "", &c.1, c.2.clone(), None, unit_sync, settings, drag_guard);
     });
 }

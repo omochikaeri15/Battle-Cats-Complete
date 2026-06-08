@@ -243,7 +243,7 @@ pub fn show_popup(
                         if ATTACK_TYPE_ICONS.contains(&display_def.icon) { continue; }
                         if talent_icons.contains(&display_def.icon) { continue; }
 
-                        talent_icons.push(display_def.icon.clone());
+                        talent_icons.push(display_def.icon);
                     }
 
                     if !talent_icons.is_empty() {
@@ -305,15 +305,15 @@ fn render_display_group(
         if ATTACK_TYPE_ICONS.contains(&display_def.icon) { continue; }
         if icons_in_group.contains(&display_def.icon) { continue; }
 
-        icons_in_group.push(display_def.icon.clone());
-        rendered_icons.insert(display_def.icon.clone());
+        icons_in_group.push(display_def.icon);
+        rendered_icons.insert(display_def.icon);
     }
 
     if target_group == DisplayGroup::Headline2 {
         let kamikaze = AbilityIcon::Custom(core::global::game::abilities::CustomIcon::Kamikaze);
 
         if !icons_in_group.contains(&kamikaze) {
-            icons_in_group.push(kamikaze.clone());
+            icons_in_group.push(kamikaze);
             rendered_icons.insert(kamikaze);
         }
     }
@@ -382,7 +382,7 @@ fn render_filter_icon_row(
                         let color = if is_active { egui::Color32::WHITE } else { egui::Color32::from_gray(120) };
                         if ui.add(egui::Label::new(egui::RichText::new(&name).color(color)).sense(egui::Sense::click())).clicked() {
                             if is_active { state.active_icons.remove(icon); }
-                            else { state.active_icons.insert(icon.clone()); }
+                            else { state.active_icons.insert(*icon); }
                         }
                     }
                 });
@@ -396,7 +396,7 @@ fn render_filter_icon_row(
                                 ui.label(format!("{}:", attr));
 
                                 let range = state.adv_ranges
-                                    .entry(icon.clone())
+                                    .entry(*icon)
                                     .or_default()
                                     .entry(attr)
                                     .or_default();
@@ -443,7 +443,7 @@ fn render_filter_icon(
                 let response = ui.add(egui::ImageButton::new(img).frame(false));
                 if response.clicked() {
                     if is_active { active_icons.remove(icon); }
-                    else { active_icons.insert(icon.clone()); }
+                    else { active_icons.insert(*icon); }
                 }
                 response.on_hover_text(core::cat::logic::filter::get_icon_name(icon));
                 return;
@@ -461,7 +461,7 @@ fn render_filter_icon(
                 let response = ui.add(egui::ImageButton::new(img).frame(false));
                 if response.clicked() {
                     if is_active { active_icons.remove(icon); }
-                    else { active_icons.insert(icon.clone()); }
+                    else { active_icons.insert(*icon); }
                 }
                 response.on_hover_text(core::cat::logic::filter::get_icon_name(icon));
                 return;
@@ -478,7 +478,7 @@ fn render_filter_icon(
     }
     if response.clicked() {
         if is_active { active_icons.remove(icon); }
-        else { active_icons.insert(icon.clone()); }
+        else { active_icons.insert(*icon); }
     }
     response.on_hover_text(core::cat::logic::filter::get_icon_name(icon));
 }
