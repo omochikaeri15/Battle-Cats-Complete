@@ -4,7 +4,7 @@ pub use crate::enemy::data::enemypicturebook::{EnemyPictureBook, EnemyPictureBoo
 
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct Unit {
-    pub id: u32,
+    pub id: u16,
     pub name: Option<String>,
     pub description: Option<Vec<String>>,
     pub battle: Option<Battle>,
