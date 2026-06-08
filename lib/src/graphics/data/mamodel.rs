@@ -91,7 +91,7 @@ impl Model {
 
     fn parse_inner(bytes: &[u8]) -> Option<Self> {
         let content = csv::scrub(bytes);
-        let delimiter = ',';
+        let delimiter = csv::detect_separator(&content);
 
         let lines: Vec<&str> = content.lines().filter(|line_ref| !line_ref.trim().is_empty()).collect();
 

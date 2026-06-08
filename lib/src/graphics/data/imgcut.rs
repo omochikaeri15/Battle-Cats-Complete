@@ -86,7 +86,7 @@ impl SpriteSheet {
         }
 
         let content = csv::scrub(imgcut);
-        let delimiter = ',';
+        let delimiter = csv::detect_separator(&content);
         let lines: Vec<&str> = content.lines().filter(|line| !line.trim().is_empty()).collect();
 
         let mut sprite_count = 0;

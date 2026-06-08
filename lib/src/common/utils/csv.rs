@@ -1,8 +1,9 @@
-#[allow(dead_code)]
 pub fn detect_separator(text: &str) -> char {
-    if text.contains('|') { return '|'; }
-    if text.contains('\t') { return '\t'; }
-    ',' // Default
+    const DELIMITERS: &[char] = &['|', '\t', ','];
+
+    text.chars()
+        .find(|candidates| DELIMITERS.contains(candidates))
+        .unwrap_or(',') // Default
 }
 
 pub fn scrub(bytes: &[u8]) -> String {

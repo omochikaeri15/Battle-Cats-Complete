@@ -53,7 +53,7 @@ impl Animation {
 
     fn parse_inner(bytes: &[u8]) -> Option<Self> {
         let content = csv::scrub(bytes);
-        let delimiter = ',';
+        let delimiter = csv::detect_separator(&content);
 
         let lines: Vec<&str> = content.lines().filter(|line_ref| !line_ref.trim().is_empty()).collect();
 
@@ -188,7 +188,7 @@ impl Animation {
 
     fn scan_duration_inner(bytes: &[u8]) -> i32 {
         let content = csv::scrub(bytes);
-        let delimiter = ',';
+        let delimiter = csv::detect_separator(&content);
 
         let lines: Vec<&str> = content.lines().filter(|l| !l.trim().is_empty()).collect();
         if lines.is_empty() { return 0; }
