@@ -17,6 +17,11 @@ impl fmt::Display for BattleError {
 
 impl std::error::Error for BattleError {}
 
+/// Represents the complete statistical and behavioral profile for a single entity form.
+///
+/// This structure defines the strictly ordered array of combat parameters, execution 
+/// timings, targeting flags, and specialized ability modifiers mapping directly to 
+/// the application's internal simulation engine.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct Battle {
     pub hitpoints: i32,
@@ -146,14 +151,14 @@ impl Battle {
 
         let max_read = Cell::new(0);
 
-        let get_int = |index: usize| {
-            max_read.set(max_read.get().max(index));
-            line_parts.get(index).and_then(|s: &&str| s.trim().parse::<i32>().ok()).unwrap_or(0)
+        let get_int = |idx: usize| {
+            max_read.set(max_read.get().max(idx));
+            line_parts.get(idx).and_then(|s: &&str| s.trim().parse::<i32>().ok()).unwrap_or(0)
         };
 
-        let get_int_neg = |index: usize| {
-            max_read.set(max_read.get().max(index));
-            line_parts.get(index).and_then(|s: &&str| s.trim().parse::<i32>().ok()).unwrap_or(-1)
+        let get_int_neg = |idx: usize| {
+            max_read.set(max_read.get().max(idx));
+            line_parts.get(idx).and_then(|s: &&str| s.trim().parse::<i32>().ok()).unwrap_or(-1)
         };
 
         let mut raw = Self {
@@ -287,13 +292,11 @@ impl Battle {
         Some(raw)
     }
 
-    /// PUBLIC API: Parses a byte slice into a vector of Battle profiles.
     pub fn parse<B: AsRef<[u8]>>(bytes: B) -> Result<Vec<Self>, BattleError> {
         parse_inner(bytes.as_ref())
     }
 }
 
-/// PRIVATE INNER: Does the heavy lifting. Only compiled once to prevent binary bloat.
 fn parse_inner(bytes: &[u8]) -> Result<Vec<Battle>, BattleError> {
     let file_content = csv::scrub(bytes);
     let delimiter = csv::detect_separator(&file_content);

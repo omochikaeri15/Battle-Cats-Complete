@@ -137,7 +137,7 @@ impl Animation {
 
             if curve.loop_count != 1
                 && let (Some(first_keyframe), Some(last_keyframe)) = (curve.keyframes.first(), curve.keyframes.last()) {
-                    let duration = (last_keyframe.frame - first_keyframe.frame);
+                    let duration = last_keyframe.frame - first_keyframe.frame;
                     if duration > 0 {
                         overall_lcm = lcm(overall_lcm as i32, duration);
                         found_looping_part = true;

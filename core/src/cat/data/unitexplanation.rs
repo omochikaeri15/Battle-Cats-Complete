@@ -27,7 +27,7 @@ pub fn load(cat_id: u32, original_folder_path: &Path, priority: &[String]) -> Un
 
                     // ORCHESTRATOR LOGIC: Merge the fallback languages for the UI
                     for i in 0..4 {
-                        if final_explanation.names[i].is_empty() && !parsed_explanation.names[i].is_empty() {
+                        if final_explanation.names[i].is_none() && parsed_explanation.names[i].is_some() {
                             final_explanation.names[i] = parsed_explanation.names[i].clone();
                             final_explanation.descriptions[i] = parsed_explanation.descriptions[i].clone();
                         }
@@ -38,7 +38,7 @@ pub fn load(cat_id: u32, original_folder_path: &Path, priority: &[String]) -> Un
         }
 
         // If we found any valid names in this directory's fallback chain, stop searching deeper
-        if final_explanation.names.iter().any(|name| !name.is_empty()) {
+        if final_explanation.names.iter().any(|name| name.is_some()) {
             break;
         }
     }

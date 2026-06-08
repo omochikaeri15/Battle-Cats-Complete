@@ -9,26 +9,30 @@ pub enum SkillDescriptionsError {
 impl fmt::Display for SkillDescriptionsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SkillDescriptionsError::EmptyFile => write!(f, "The provided file bytes contained no valid skill descriptions."),
+            Self::EmptyFile => write!(f, "The provided file bytes contained no valid skill descriptions."),
         }
     }
 }
 
 impl std::error::Error for SkillDescriptionsError {}
 
+/// Represents the ordered sequence of localized textual descriptions for skills.
+///
+/// This structure maintains a synchronized index mapping where the vector index
+/// corresponds directly to the internal skill identifier. It retains the cleansed,
+/// newline-formatted display strings extracted from the raw data buffer.
 #[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct SkillDescriptions {
+    /// The sequence of cleansed description strings, indexed by skill ID.
     pub texts: Vec<String>,
 }
 
 impl SkillDescriptions {
-    /// PUBLIC API: Parses a byte slice into a SkillDescriptions struct.
     pub fn parse<B: AsRef<[u8]>>(bytes: B) -> Result<Self, SkillDescriptionsError> {
         parse_inner(bytes.as_ref())
     }
 }
 
-/// PRIVATE INNER: Does the heavy lifting.
 fn parse_inner(bytes: &[u8]) -> Result<SkillDescriptions, SkillDescriptionsError> {
     let file_content = csv::scrub(bytes);
     let separator = csv::detect_separator(&file_content);
@@ -37,7 +41,6 @@ fn parse_inner(bytes: &[u8]) -> Result<SkillDescriptions, SkillDescriptionsError
 
     for line in file_content.lines() {
         if line.trim().is_empty() {
-            // Domain Rule: Maintain index sync by pushing empty strings
             texts.push(String::new());
             continue;
         }
@@ -47,7 +50,6 @@ fn parse_inner(bytes: &[u8]) -> Result<SkillDescriptions, SkillDescriptionsError
             None => line,
         };
 
-        // Domain Rule: Convert HTML line breaks to pure string newlines
         texts.push(raw_text.replace("<br>", "\n").trim().to_string());
     }
 

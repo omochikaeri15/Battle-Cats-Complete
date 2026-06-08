@@ -1,4 +1,2 @@
 # Nyanko
-Pure stateless library for handling game data, animations, and mods from *The Battle Cats*.
-
-Part of the larger [Battle Cats Complete](https://github.com/omochikaeri15/Battle-Cats-Complete) ecosystem.
+Pure stateless library for handling game quirks, animations, and files from *The Battle Cats*.

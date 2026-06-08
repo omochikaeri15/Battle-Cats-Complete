@@ -191,9 +191,9 @@ fn solve_single_part(target_index: usize, parts: &[ModelPart], model: &Model) ->
     let sine_final = angle_radians.sin();
 
     let matrix = [
-        (final_scale_x * cosine_final) as f32,      (final_scale_x * sine_final) as f32,          0.0,
-        (-final_scale_y * sine_final) as f32,       (final_scale_y * cosine_final) as f32,        0.0,
-        final_position[0] as f32, -final_position[1] as f32,      1.0
+        (final_scale_x * cosine_final) as f32, (final_scale_x * sine_final) as f32, 0.0,
+        (-final_scale_y * sine_final) as f32, (final_scale_y * cosine_final) as f32, 0.0,
+        final_position[0] as f32, -final_position[1] as f32, 1.0
     ];
 
     WorldTransform {

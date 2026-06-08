@@ -58,7 +58,7 @@ pub fn animate(model: &Model, animation: &Animation, global_frame: f32, state_bu
             _ => {}
         }
     }
-    
+
     Ok(())
 }
 
@@ -124,17 +124,17 @@ fn interpolate_curve(curve: &AnimModification, frame: f32, is_discrete: bool) ->
         let frame_int = frame.trunc() as i64;
 
         for outer_index in 0..total_points {
-            let (xj, yj) = points[outer_index];
-            let mut v = yj << 12;
+            let (frame_j, val_j) = points[outer_index];
+            let mut lagrange_term = val_j << 12;
 
             for inner_index in 0..total_points {
                 if outer_index == inner_index { continue; }
-                let (xm, _) = points[inner_index];
-                if xj - xm != 0 {
-                    v = v * (frame_int - xm) / (xj - xm);
+                let (frame_m, _) = points[inner_index];
+                if frame_j - frame_m != 0 {
+                    lagrange_term = lagrange_term * (frame_int - frame_m) / (frame_j - frame_m);
                 }
             }
-            final_result += v;
+            final_result += lagrange_term;
         }
 
         return Some((final_result / 4096) as f32);
@@ -142,30 +142,29 @@ fn interpolate_curve(curve: &AnimModification, frame: f32, is_discrete: bool) ->
 
     let time_duration = (end_keyframe.frame - start_keyframe.frame) as f32;
     let time_current = frame.trunc() - (start_keyframe.frame as f32);
-    let x = time_current / time_duration;
-
+    let progress = time_current / time_duration;
     let start_value = start_keyframe.value as f32;
     let value_change = (end_keyframe.value - start_keyframe.value) as f32;
 
     let interpolated_value = match start_keyframe.ease_mode {
-        0 => start_value + (value_change * x).trunc(),
-        1 => if x >= 1.0 { end_keyframe.value as f32 } else { start_value },
+        0 => start_value + (value_change * progress).trunc(),
+        1 => if progress >= 1.0 { end_keyframe.value as f32 } else { start_value },
         2 => {
             let ease_power = if start_keyframe.ease_power != 0 { start_keyframe.ease_power as f32 } else { 1.0 };
-            let x_clamped = x.clamp(0.0, 1.0);
+            let progress_clamped = progress.clamp(0.0, 1.0);
             let ease_factor = if ease_power >= 0.0 {
-                1.0 - (1.0 - x_clamped.powf(ease_power)).sqrt()
+                1.0 - (1.0 - progress_clamped.powf(ease_power)).sqrt()
             } else {
-                (1.0 - (1.0 - x_clamped).powf(-ease_power)).sqrt()
+                (1.0 - (1.0 - progress_clamped).powf(-ease_power)).sqrt()
             };
 
             if ease_factor.is_nan() {
-                start_value + (value_change * x).trunc()
+                start_value + (value_change * progress).trunc()
             } else {
                 start_value + (value_change * ease_factor).trunc()
             }
         },
-        _ => start_value + (value_change * x).trunc()
+        _ => start_value + (value_change * progress).trunc()
     };
 
     if curve.modification_type == 2 {

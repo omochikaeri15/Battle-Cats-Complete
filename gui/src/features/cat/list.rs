@@ -114,15 +114,15 @@ impl CatList {
     ) {
         if self.placeholder_texture.is_none()
             && let Ok(img) = image::load_from_memory(core::global::assets::UDI_F) {
-                let rgba = img.to_rgba8();
-                let size = [rgba.width() as usize, rgba.height() as usize];
-                let pixels = rgba.as_flat_samples();
-                self.placeholder_texture = Some(ctx.load_texture(
-                    "list_placeholder",
-                    egui::ColorImage::from_rgba_unmultiplied(size, pixels.as_slice()),
-                    egui::TextureOptions::LINEAR
-                ));
-            }
+            let rgba = img.to_rgba8();
+            let size = [rgba.width() as usize, rgba.height() as usize];
+            let pixels = rgba.as_flat_samples();
+            self.placeholder_texture = Some(ctx.load_texture(
+                "list_placeholder",
+                egui::ColorImage::from_rgba_unmultiplied(size, pixels.as_slice()),
+                egui::TextureOptions::LINEAR
+            ));
+        }
 
         while let Ok(loaded) = self.rx_result.try_recv() {
             if let Some(img) = loaded.img {
@@ -161,15 +161,15 @@ impl CatList {
             for index in row_range {
                 if let Some(&real_index) = self.cached_indices.get(index)
                     && let Some(hovered) = self.render_list_row(ui, units, real_index, selected_id, hq, now) {
-                        hovered_this_frame = Some(hovered);
-                    }
+                    hovered_this_frame = Some(hovered);
+                }
             }
             hovered_this_frame
         });
 
         if scroll_output.inner.is_some() {
-             self.hover_lost_time = None;
-             return;
+            self.hover_lost_time = None;
+            return;
         }
 
         if self.hover_lost_time.is_none() {
@@ -178,8 +178,8 @@ impl CatList {
 
         if let Some(lost_start) = self.hover_lost_time
             && now - lost_start > 0.1 {
-                self.hovered_id = None;
-            }
+            self.hovered_id = None;
+        }
     }
 
     fn render_list_row(&mut self, ui: &mut egui::Ui, units: &[CatEntry], real_index: usize, selected_id: &mut Option<u32>, hq: bool, now: f64) -> Option<egui::Id> {
@@ -268,7 +268,7 @@ impl CatList {
                 self.cached_indices.push(i);
                 continue;
             }
-            if unit.names.iter().any(|name| name.to_lowercase().contains(&query_lower)) {
+            if unit.names.iter().flatten().any(|name| name.to_lowercase().contains(&query_lower)) {
                 self.cached_indices.push(i);
             }
         }

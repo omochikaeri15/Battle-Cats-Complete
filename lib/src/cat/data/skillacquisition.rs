@@ -10,36 +10,65 @@ pub enum SkillAcquisitionError {
 impl fmt::Display for SkillAcquisitionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SkillAcquisitionError::EmptyFile => write!(f, "The provided file bytes contained no valid talent data."),
+            Self::EmptyFile => write!(f, "The provided file bytes contained no valid talent data."),
         }
     }
 }
 
 impl std::error::Error for SkillAcquisitionError {}
 
+/// Represents the complete talent configuration for a specific entity.
+///
+/// This structure encapsulates the assigned identifier, structural typing, and the
+/// flat collection of individual upgradeable talents available to the entity.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Talent {
+    /// The primary internal identifier linking this configuration to a specific entity.
     pub id: u16,
+    /// The structural classification flag for the talent layout.
     pub type_id: u16,
+    /// The collection of individual talents.
     pub groups: Vec<TalentGroup>,
 }
 
+/// Represents an individual upgradeable talent within a configuration.
+///
+/// This structure defines the boundary parameters, level caps, and referential
+/// indices required to compute the exact mathematical weight of the talent at
+/// any valid progression level.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TalentGroup {
+    /// The internal ID specifying the mechanical effect of the talent.
     pub ability_id: u8,
+    /// The maximum permitted level for this talent.
     pub max_level: u8,
-    pub min_1: u16, pub max_1: u16,
-    pub min_2: u16, pub max_2: u16,
-    pub min_3: u16, pub max_3: u16,
-    pub min_4: u16, pub max_4: u16,
+    /// The base boundary parameter for the first data field.
+    pub min_1: u16,
+    /// The maximum boundary parameter for the first data field.
+    pub max_1: u16,
+    /// The base boundary parameter for the second data field.
+    pub min_2: u16,
+    /// The maximum boundary parameter for the second data field.
+    pub max_2: u16,
+    /// The base boundary parameter for the third data field.
+    pub min_3: u16,
+    /// The maximum boundary parameter for the third data field.
+    pub max_3: u16,
+    /// The base boundary parameter for the fourth data field.
+    pub min_4: u16,
+    /// The maximum boundary parameter for the fourth data field.
+    pub max_4: u16,
+    /// The index mapping to the associated localized explanation text.
     pub text_id: u8,
+    /// The index mapping to the associated resource cost curve.
     pub cost_id: u8,
+    /// The index mapping to the associated localized display name.
     pub name_id: i16,
+    /// The maximum allowable instantiation limit for this specific talent.
     pub limit: u8,
 }
 
 impl TalentGroup {
-    /// Pure game math for calculating a specific parameter's value at a given talent level.
     pub fn calculate_value(min: u16, max: u16, level: u8, max_level: u8) -> i32 {
         if level == 0 { return 0; }
         if max_level <= 1 { return min as i32; }
@@ -57,13 +86,11 @@ impl TalentGroup {
 }
 
 impl Talent {
-    /// PUBLIC API: Parses a byte slice into a HashMap of unlocked Talents.
     pub fn parse<B: AsRef<[u8]>>(bytes: B) -> Result<HashMap<u16, Self>, SkillAcquisitionError> {
         parse_inner(bytes.as_ref())
     }
 }
 
-/// PRIVATE INNER: Does the heavy lifting.
 fn parse_inner(bytes: &[u8]) -> Result<HashMap<u16, Talent>, SkillAcquisitionError> {
     let file_content = csv::scrub(bytes);
     let delimiter = csv::detect_separator(&file_content);

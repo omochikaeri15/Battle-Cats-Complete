@@ -10,13 +10,19 @@ pub enum UnitBuyError {
 impl fmt::Display for UnitBuyError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            UnitBuyError::EmptyFile => write!(f, "The provided file bytes contained no valid unit buy data."),
+            Self::EmptyFile => write!(f, "The provided file bytes contained no valid unit buy data."),
         }
     }
 }
 
 impl std::error::Error for UnitBuyError {}
 
+/// Outlines the economic and structural progression parameters of a unit.
+///
+/// This structure dictates how an entity exists within the overarching economy
+/// and progression systems. It defines rarity tiers, requisite experience costs,
+/// level caps, unlock conditions, and evolution material requirements, mapping
+/// directly to the application's internal upgrade indexing.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct UnitBuy {
     pub stage_unlock_requirement: i32,
@@ -60,22 +66,22 @@ pub struct UnitBuy {
 
 impl UnitBuy {
     fn from_csv_line(csv_line: &str, delimiter: char) -> Option<Self> {
-        let parts: Vec<&str> = csv_line.split(delimiter).map(|string_part| string_part.trim()).collect();
+        let parts: Vec<&str> = csv_line.split(delimiter).map(|s| s.trim()).collect();
 
-        let get_integer = |column_index: usize| -> i32 {
-            parts.get(column_index).and_then(|string_part| string_part.parse::<i32>().ok()).unwrap_or(-1)
+        let get_integer = |idx: usize| -> i32 {
+            parts.get(idx).and_then(|s| s.parse::<i32>().ok()).unwrap_or(-1)
         };
 
-        let get_long = |column_index: usize| -> i64 {
-            parts.get(column_index).and_then(|string_part| string_part.parse::<i64>().ok()).unwrap_or(-1)
+        let get_long = |idx: usize| -> i64 {
+            parts.get(idx).and_then(|s| s.parse::<i64>().ok()).unwrap_or(-1)
         };
 
-        let parse_materials = |start_index: usize| -> Vec<(i32, i32)> {
+        let parse_materials = |start_idx: usize| -> Vec<(i32, i32)> {
             let mut material_list = Vec::new();
-            for index in 0..5 {
-                let base_index = start_index + (index * 2);
-                let item_id = get_integer(base_index);
-                let item_cost = get_integer(base_index + 1);
+            for i in 0..5 {
+                let base_idx = start_idx + (i * 2);
+                let item_id = get_integer(base_idx);
+                let item_cost = get_integer(base_idx + 1);
                 if item_id != -1 && item_cost > 0 {
                     material_list.push((item_id, item_cost));
                 }
@@ -83,14 +89,14 @@ impl UnitBuy {
             material_list
         };
 
-        let parse_upgrades = |start_index: usize| -> Vec<i32> {
-            (0..10).map(|index| get_integer(start_index + index)).collect()
+        let parse_upgrades = |start_idx: usize| -> Vec<i32> {
+            (0..10).map(|i| get_integer(start_idx + i)).collect()
         };
 
         let mut rest_vector = Vec::new();
         if parts.len() > 63 {
-            for index in 63..parts.len() {
-                let Ok(parsed_value) = parts[index].parse::<i32>() else { continue; };
+            for i in 63..parts.len() {
+                let Ok(parsed_value) = parts[i].parse::<i32>() else { continue; };
                 rest_vector.push(parsed_value);
             }
         }
@@ -136,13 +142,11 @@ impl UnitBuy {
         })
     }
 
-    /// PUBLIC API: Parses a byte slice into a HashMap of UnitBuy entries mapped by Cat ID.
     pub fn parse<B: AsRef<[u8]>>(bytes: B) -> Result<HashMap<u32, Self>, UnitBuyError> {
         parse_inner(bytes.as_ref())
     }
 }
 
-/// PRIVATE INNER: Does the heavy lifting.
 fn parse_inner(bytes: &[u8]) -> Result<HashMap<u32, UnitBuy>, UnitBuyError> {
     let file_content = csv::scrub(bytes);
     let delimiter = csv::detect_separator(&file_content);

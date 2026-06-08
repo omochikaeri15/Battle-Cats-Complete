@@ -7,17 +7,15 @@
 /// # Returns
 /// Returns `true` if the data matches the expected format, `false` otherwise.
 pub fn check_integrity(data: &[u8], filename: &str) -> bool {
-    let lower_name = filename.to_lowercase();
+    let ext = filename
+        .rsplit_once('.')
+        .map(|(_, e)| e.to_lowercase());
 
-    if lower_name.ends_with(".png") {
-        return data.len() >= 4 && data.starts_with(&[0x89, 0x50, 0x4E, 0x47]);
+    match ext.as_deref() {
+        Some("png") => data.starts_with(&[0x89, 0x50, 0x4E, 0x47]),
+        Some("csv" | "tsv" | "list" | "json" | "maanim" | "mamodel" | "imgcut") => {
+            std::str::from_utf8(data).is_ok()
+        }
+        _ => true,
     }
-
-    if lower_name.ends_with(".csv") || lower_name.ends_with(".tsv") || lower_name.ends_with(".list") || lower_name.ends_with(".json")
-        || lower_name.ends_with(".maanim") || lower_name.ends_with(".mamodel") || lower_name.ends_with(".imgcut")
-    {
-        return std::str::from_utf8(data).is_ok();
-    }
-
-    true
 }

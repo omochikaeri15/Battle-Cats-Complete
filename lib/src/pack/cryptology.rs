@@ -7,20 +7,13 @@ pub use crate::pack::utils::verify::check_integrity;
 use std::fmt;
 use std::error::Error;
 
-/// Represents failures that can occur during pack cryptographic operations.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PackError {
-    /// The provided string contains invalid hexadecimal characters.
     InvalidHexFormat,
-    /// The decoded hexadecimal string does not equal exactly 16 bytes.
     InvalidKeyLength,
-    /// Required cryptographic keys or initialization vectors were not provided.
     MissingCipherParameters,
-    /// Block cipher padding validation or AES decryption failure.
     DecryptionFailed,
-    /// Block cipher padding application or AES encryption failure.
     EncryptionFailed,
-    /// List manifest decryption failed due to invalid keys or corrupted data.
     ListDecryptionFailed,
 }
 
@@ -39,74 +32,42 @@ impl fmt::Display for PackError {
 
 impl Error for PackError {}
 
-/// Represents the regional version of The Battle Cats.
-///
-/// Cryptographic keys differ based on the target game region. This enum identifies
-/// which key successfully decrypted a file, allowing downstream orchestrators to track active regions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Region {
-    /// English / Global version (`en`)
-    En,
-    /// Japanese version (`jp`)
-    Jp,
-    /// Korean version (`kr`)
-    Kr,
-    /// Taiwanese version (`tw`)
-    Tw,
-}
+pub enum Region { En, Jp, Kr, Tw }
 
-/// Represents the encryption strategy required for a specific type of pack file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PackType {
-    /// Standard game data requiring regional CBC encryption.
-    Standard,
-    /// Server data requiring global ECB encryption.
-    Server,
-    /// Image data requiring no encryption.
-    ImageData,
-}
+pub enum PackType { Standard, Server, ImageData }
 
-/// A parsed 128-bit AES cipher key and initialization vector for a specific region.
 #[derive(Clone)]
 pub struct RegionalCipher {
-    /// The region associated with this cipher.
     pub region: Region,
-    /// The 16-byte AES decryption key.
     pub key: [u8; 16],
-    /// The 16-byte initialization vector.
     pub iv: [u8; 16],
 }
 
-/// An in-memory keystore for `.pack` decryption.
-///
-/// Holds pre-parsed, hardware-ready byte arrays to prevent redundant
-/// hex decoding and memory allocations during massive bulk decryption operations.
 #[derive(Default)]
 pub struct Keys {
-    /// The collection of verified regional ciphers.
     pub ciphers: Vec<RegionalCipher>,
 }
 
 impl Keys {
-    /// Initializes an empty keystore.
-    pub fn new() -> Self {
-        Self { ciphers: Vec::new() }
-    }
-
-    /// Parses a collection of raw hex strings into a fully verified, immutable keystore.
+    /// Parses a collection of raw hexadecimal key and initialization vector (IV) strings
+    /// into a structured `Keys` instance.
+    ///
+    /// This function decodes the hexadecimal strings and strictly validates that
+    /// the resulting byte arrays conform to the required 16-byte length for AES-128.
     ///
     /// # Arguments
-    /// * `tuples` - A slice of tuples containing `(Region, Key Hex, IV Hex)`.
+    /// * `tuples` - A slice of tuples containing the `Region`, the hex-encoded key string, and the hex-encoded IV string.
     ///
     /// # Returns
-    /// Returns the initialized keystore, or a `PackError` if any hex string is invalid or incorrectly sized.
+    /// A `Result` containing the populated `Keys` instance on success, or a `PackError`
+    /// if any of the hex strings are invalid or improperly sized.
     pub fn parse(tuples: &[(Region, &str, &str)]) -> Result<Self, PackError> {
         let mut ciphers = Vec::with_capacity(tuples.len());
-
         for (region, hex_key, hex_iv) in tuples {
             ciphers.push(Self::parse_cipher(*region, hex_key, hex_iv)?);
         }
-
         Ok(Self { ciphers })
     }
 
@@ -121,64 +82,58 @@ impl Keys {
     }
 }
 
-/// Attempts to decrypt a raw chunk of pack data using a brute-force key resolution strategy.
+/// Attempts to decrypt a data chunk by iterating through a set of regional ciphers
+/// and falling back to a hardcoded server key if necessary.
 ///
-/// Tests the provided regional keys against the cipher. If a regional key succeeds, it verifies
-/// the decrypted output against known file magic bytes. If all regional keys fail, it automatically
-/// falls back to testing the global server keys.
+/// The function verifies a successful decryption by checking the integrity of the
+/// output against the expected internal filename. If all decryption attempts fail
+/// the integrity check, it assumes the data is unencrypted and returns it as-is.
 ///
 /// # Arguments
-/// * `data` - The raw, encrypted byte array extracted directly from the pack.
-/// * `internal_filename` - The target name of the file, used internally to verify the decrypted content type.
-/// * `keys` - A `Keys` keystore containing the pre-parsed regional ciphers.
+/// * `data` - A byte slice containing the encrypted raw chunk data.
+/// * `internal_filename` - The name of the file expected within the chunk, used to verify the integrity of the decrypted data.
+/// * `keys` - A reference to a `Keys` struct containing the available regional ciphers.
 ///
 /// # Returns
-/// A tuple containing the resulting bytes and an `Option<Region>`. The `Region` indicates which
-/// regional key succeeded. If the global server key was used, or if no encryption was detected, the region will be `None`.
-pub fn decrypt_chunk(
-    data: &[u8],
-    internal_filename: &str,
-    keys: &Keys
-) -> (Vec<u8>, Option<Region>) {
-
+/// A tuple containing the processed byte vector and an `Option<Region>`. The region is `Some`
+/// if a regional CBC cipher succeeded, `None` if the ECB server cipher succeeded, or `None`
+/// if it fell back to returning the unencrypted raw data.
+pub fn decrypt_chunk(data: &[u8], internal_filename: &str, keys: &Keys) -> (Vec<u8>, Option<Region>) {
     for cipher in &keys.ciphers {
         if let Ok(result) = decrypt_cbc(data, &cipher.key, &cipher.iv)
             && check_integrity(&result, internal_filename) {
-                return (result, Some(cipher.region));
-            }
+            return (result, Some(cipher.region));
+        }
     }
 
     let server_key = get_md5_key("battlecats");
     if let Ok(result) = decrypt_ecb(data, &server_key)
         && check_integrity(&result, internal_filename) {
-            return (result, None);
-        }
+        return (result, None);
+    }
 
     (data.to_vec(), None)
 }
 
-/// Encrypts a raw chunk of game data based on its designated `PackType`.
+/// Encrypts a raw data chunk based on the specified pack classification.
+///
+/// This handles pass-through for image data, ECB encryption for server packs using
+/// a derived MD5 key, and CBC encryption for standard regional packs which require
+/// explicitly provided key and IV parameters.
 ///
 /// # Arguments
-/// * `data` - The raw, plaintext byte array of the file to be encrypted.
-/// * `pack_type` - A strict enum defining the target encryption strategy.
-/// * `key` - An optional 16-byte array representing the specific regional cipher key.
-/// * `iv` - An optional 16-byte array representing the specific regional initialization vector.
+/// * `data` - A byte slice containing the unencrypted raw chunk data.
+/// * `pack_type` - The `PackType` determining the specific encryption strategy (Standard, Server, or ImageData).
+/// * `key` - An optional reference to a 16-byte array used as the AES encryption key for `Standard` packs.
+/// * `iv` - An optional reference to a 16-byte array used as the initialization vector for `Standard` packs.
 ///
 /// # Returns
-/// Returns the encrypted byte array, or a `PackError` if AES parameters are missing or padding fails.
-pub fn encrypt_chunk(
-    data: &[u8],
-    pack_type: PackType,
-    key: Option<&[u8; 16]>,
-    iv: Option<&[u8; 16]>
-) -> Result<Vec<u8>, PackError> {
+/// A `Result` containing the encrypted byte vector on success, or a `PackError` if
+/// required cipher parameters are missing or the encryption engine fails.
+pub fn encrypt_chunk(data: &[u8], pack_type: PackType, key: Option<&[u8; 16]>, iv: Option<&[u8; 16]>) -> Result<Vec<u8>, PackError> {
     match pack_type {
         PackType::ImageData => Ok(data.to_vec()),
-        PackType::Server => {
-            let server_key = get_md5_key("battlecats");
-            encrypt_ecb(data, &server_key)
-        },
+        PackType::Server => encrypt_ecb(data, &get_md5_key("battlecats")),
         PackType::Standard => {
             let (Some(cipher_key), Some(cipher_iv)) = (key, iv) else {
                 return Err(PackError::MissingCipherParameters);
@@ -188,36 +143,41 @@ pub fn encrypt_chunk(
     }
 }
 
-/// Decrypts a `.list` file containing pack manifest data.
+/// Decrypts a list manifest file using predefined ECB keys.
 ///
-/// List files act as the table of contents for `.pack` files and utilize specific
-/// ECB encryption patterns distinct from standard asset CBC encryption.
+/// The function attempts decryption with a standard "pack" key first. If that fails
+/// or yields invalid UTF-8 data, it falls back to a secondary "battlecats" key before
+/// failing entirely.
 ///
 /// # Arguments
-/// * `data` - The raw, encrypted bytes of the `.list` file.
+/// * `data` - A byte slice containing the encrypted manifest list data.
 ///
 /// # Returns
-/// Returns the decrypted manifest as a valid UTF-8 `String`, or a `PackError` if decryption fails.
+/// A `Result` containing the decrypted manifest as a UTF-8 `String` on success, or a
+/// `PackError::ListDecryptionFailed` if all decryption attempts fail or produce invalid text.
 pub fn decrypt_list(data: &[u8]) -> Result<String, PackError> {
     let pack_key = get_md5_key("pack");
     if let Ok(bytes) = decrypt_ecb(data, &pack_key)
-        && let Ok(s) = String::from_utf8(bytes) { return Ok(s); }
+        && let Ok(manifest_text) = String::from_utf8(bytes) { return Ok(manifest_text); }
 
     let bc_key = get_md5_key("battlecats");
     if let Ok(bytes) = decrypt_ecb(data, &bc_key)
-        && let Ok(s) = String::from_utf8(bytes) { return Ok(s); }
+        && let Ok(manifest_text) = String::from_utf8(bytes) { return Ok(manifest_text); }
 
     Err(PackError::ListDecryptionFailed)
 }
 
-/// Encrypts a string into a `.list` file format suitable for game engine packing.
+/// Encrypts a string-based list manifest into raw bytes.
+///
+/// The manifest is encoded using the standard "pack" ECB cipher configuration
+/// expected by the game client when parsing list files.
 ///
 /// # Arguments
-/// * `data` - The raw, plaintext manifest string containing file entries, offsets, and sizes.
+/// * `data` - A string slice representing the unencrypted manifest content.
 ///
 /// # Returns
-/// Returns the fully padded and ECB-encrypted byte array.
+/// A `Result` containing the encrypted byte vector on success, or a `PackError`
+/// if the underlying AES encryption process fails.
 pub fn encrypt_list(data: &str) -> Result<Vec<u8>, PackError> {
-    let pack_key = get_md5_key("pack");
-    encrypt_ecb(data.as_bytes(), &pack_key)
+    encrypt_ecb(data.as_bytes(), &get_md5_key("pack"))
 }

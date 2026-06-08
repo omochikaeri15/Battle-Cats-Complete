@@ -23,7 +23,7 @@ pub fn resolve_drop(
 ) -> ResolvedDrop {
 
     // =========================================================================
-    // 1. Regular Items
+    // 1. Regular Items (Tickets, XP, Battle Items, Materials)
     // =========================================================================
     if let Some(located_item_unitbuy) = item_buy_registry.get(&target_item_id) {
         let target_name_row_index = located_item_unitbuy.row_index;
@@ -49,7 +49,7 @@ pub fn resolve_drop(
     }
 
     // =========================================================================
-    // 2. Base Cat Drops (Normal / Evolved form)
+    // 2. Base Cat Drops (Normal / Evolved form unlocks from stages)
     // =========================================================================
     if let Some(&located_chara_id) = drop_chara_registry.get(&target_item_id) {
         let cat_folder = Path::new(paths::DIR_CATS).join(format!("{:03}", located_chara_id));
@@ -57,9 +57,11 @@ pub fn resolve_drop(
         // THE WAITER HAND-OFF: Let the unitexplanation module manage the language fallback directories
         let explanation = unitexplanation::load(located_chara_id, &cat_folder, active_language_priority_array);
 
+        // Default to a numerical ID string if the localized name is missing
         let mut name = format!("{}-1", located_chara_id);
-        let first_form_name = &explanation.names[0];
-        if !first_form_name.is_empty() {
+
+        // Safely unwrap the strict Option type from the new UnitExplanation structure
+        if let Some(first_form_name) = &explanation.names[0] {
             name = first_form_name.clone();
         }
 
@@ -75,17 +77,21 @@ pub fn resolve_drop(
     }
 
     // =========================================================================
-    // 3. True Form Drops
+    // 3. True Form Drops (Evolution unlocks from Awaken stages)
     // =========================================================================
     if let Some((&unit_id, _)) = unit_buy_registry.iter().find(|(_, row_data)| row_data.true_form_id == target_item_id as i32) {
         let cat_folder = Path::new(paths::DIR_CATS).join(format!("{:03}", unit_id));
         let explanation = unitexplanation::load(unit_id, &cat_folder, active_language_priority_array);
+
+        // Default to a numerical ID string if the localized name is missing
         let mut name = format!("{}-3", unit_id);
-        let true_form_name = &explanation.names[2];
-        if !true_form_name.is_empty() {
+
+        // Target index 2, representing the True Form
+        if let Some(true_form_name) = &explanation.names[2] {
             name = true_form_name.clone();
         }
 
+        // True form unlocks usually display the Evolved (s) form icon in the drop menu
         let img_directory_path = PathBuf::from(format!("game/cats/{:03}/s", unit_id));
         let img_file_name = format!("uni{:03}_s00.png", unit_id);
         let image_path = crate::global::resolver::get(&img_directory_path, [&img_file_name], active_language_priority_array).into_iter().next();
@@ -97,7 +103,9 @@ pub fn resolve_drop(
         };
     }
 
-    // Fallback if absolutely nothing matches
+    // =========================================================================
+    // 4. Fallback (Unresolved Drop)
+    // =========================================================================
     ResolvedDrop {
         name: target_item_id.to_string(),
         image_path: None,

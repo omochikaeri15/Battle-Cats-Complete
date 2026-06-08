@@ -10,26 +10,30 @@ pub enum SkillLevelError {
 impl fmt::Display for SkillLevelError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SkillLevelError::EmptyFile => write!(f, "The provided file bytes contained no valid skill level data."),
+            Self::EmptyFile => write!(f, "The provided file bytes contained no valid skill level data."),
         }
     }
 }
 
 impl std::error::Error for SkillLevelError {}
 
+/// Represents the incremental resource requirements for upgrading a talent.
+///
+/// This structure defines the step-by-step cost curve mapped to a specific
+/// cost identifier. Each element in the sequence dictates the exact resource
+/// expenditure required to advance the talent to the corresponding next level.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TalentCost {
+    /// The sequence of resource costs per level progression.
     pub costs: Vec<u16>,
 }
 
 impl TalentCost {
-    /// PUBLIC API: Parses a byte slice into a HashMap of Talent Costs.
     pub fn parse<B: AsRef<[u8]>>(bytes: B) -> Result<HashMap<u8, Self>, SkillLevelError> {
         parse_inner(bytes.as_ref())
     }
 }
 
-/// PRIVATE INNER: Does the heavy lifting without monomorphization bloat.
 fn parse_inner(bytes: &[u8]) -> Result<HashMap<u8, TalentCost>, SkillLevelError> {
     let file_content = csv::scrub(bytes);
     let delimiter = csv::detect_separator(&file_content);

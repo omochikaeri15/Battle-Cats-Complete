@@ -10,26 +10,30 @@ pub enum UnitEvolveError {
 impl fmt::Display for UnitEvolveError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            UnitEvolveError::EmptyFile => write!(f, "The provided file bytes contained no valid evolution text."),
+            Self::EmptyFile => write!(f, "The provided file bytes contained no valid evolution text."),
         }
     }
 }
 
 impl std::error::Error for UnitEvolveError {}
 
+/// Represents the localized evolutionary text parameters for an entity.
+///
+/// This structure maps sequences of cleansed, newline-formatted strings to
+/// their corresponding form indices, detailing the specific requirements or
+/// localized text associated with each evolutionary stage.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct UnitEvolve {
+    /// An array of parsed string vectors, indexed by form.
     pub texts: [Vec<String>; 4],
 }
 
 impl UnitEvolve {
-    /// PUBLIC API: Parses a byte slice into a HashMap of UnitEvolve text.
     pub fn parse<B: AsRef<[u8]>>(bytes: B) -> Result<HashMap<u32, Self>, UnitEvolveError> {
         parse_inner(bytes.as_ref())
     }
 }
 
-/// PRIVATE INNER: Does the heavy lifting.
 fn parse_inner(bytes: &[u8]) -> Result<HashMap<u32, UnitEvolve>, UnitEvolveError> {
     let file_content = csv::scrub(bytes);
     let delimiter = csv::detect_separator(&file_content);
@@ -57,12 +61,12 @@ fn parse_inner(bytes: &[u8]) -> Result<HashMap<u32, UnitEvolve>, UnitEvolveError
 
         let mut texts: [Vec<String>; 4] = Default::default();
 
-        for i in 1..4 {
-            if !texts[i].is_empty() && texts[i] == texts[i - 1] {
-                texts[i].clear();
+        for form_index in 1..4 {
+            if !texts[form_index].is_empty() && texts[form_index] == texts[form_index - 1] {
+                texts[form_index].clear();
             }
         }
-        
+
         texts[2] = true_form;
         texts[3] = ultra_form;
 

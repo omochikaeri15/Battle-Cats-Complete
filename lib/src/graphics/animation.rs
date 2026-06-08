@@ -1,4 +1,4 @@
-use crate::graphics::game::{timeline, transform};
+use crate::graphics::game::{timeline, transform, construct};
 use crate::graphics::utils::boundary::calculate_animation_bounds;
 use crate::graphics::utils::periodicity::calculate_difference;
 use crate::graphics::data::imgcut::SpriteSheet;
@@ -6,22 +6,33 @@ use crate::graphics::data::imgcut::SpriteSheet;
 pub use crate::graphics::data::mamodel::Model;
 pub use crate::graphics::data::maanim::Animation as Anim;
 
-/// A parsed container holding a unit's skeletal model and texture atlas.
+/// A comprehensive container representing a fully parsed in-game entity.
+///
+/// This structure aggregates the raw skeletal hierarchy (`Model`) and the mapped
+/// texture atlas (`SpriteSheet`) required to geometrically construct and render
+/// a unit or enemy within the engine.
 pub struct Unit {
+    /// The hierarchical skeletal structure and baseline component definitions.
     pub model: Model,
+    /// The parsed texture atlas mapping for the entity's sliced sprite regions.
     pub sheet: SpriteSheet,
 }
 
 impl Unit {
-    /// Parses raw byte streams into a `Unit`.
+    /// Deserializes and validates raw binary streams into a cohesive `Unit` structure.
+    ///
+    /// This function serves as the primary ingestion point for a unit's core visual assets.
+    /// It coordinates the parsing of the unencrypted raw byte streams for the texture atlas (`.png`),
+    /// the sprite mapping definitions (`.imgcut`), and the skeletal structure (`.mamodel`).
     ///
     /// # Arguments
-    /// * `png` - The raw bytes of the texture atlas image.
-    /// * `imgcut` - The raw bytes of the `.imgcut` map defining the sprite regions.
-    /// * `mamodel` - The raw bytes of the `.mamodel` file defining the skeletal structure.
+    /// * `png` - An object implementing `AsRef<[u8]>` containing the raw PNG image data.
+    /// * `imgcut` - An object implementing `AsRef<[u8]>` containing the delimited `.imgcut` map.
+    /// * `mamodel` - An object implementing `AsRef<[u8]>` containing the `.mamodel` skeletal hierarchy.
     ///
     /// # Returns
-    /// Returns `Some(Unit)` if all files are successfully parsed, or `None` if any file is invalid.
+    /// An `Option<Self>`. Returns `Some(Unit)` if all discrete files are successfully parsed
+    /// and mathematically linked. Returns `None` if any individual file fails strict structural validation.
     #[inline(always)]
     pub fn parse(
         png: impl AsRef<[u8]>,
@@ -38,14 +49,19 @@ impl Unit {
         Some(Self { model, sheet })
     }
 
-    /// Calculates the maximum spatial boundaries of the `Unit` across the provided animations.
+    /// Calculates the maximum spatial bounding box of the `Unit` across a sequence of animations.
+    ///
+    /// This function iterates through the provided animation data to determine the absolute
+    /// spatial extremities (min/max X and Y) reached by the unit's sprites during playback.
+    /// This computation is necessary for strict rendering culling and localized UI alignment.
     ///
     /// # Arguments
-    /// * `animations` - A slice of animation references to be evaluated.
-    /// * `tolerance` - A float between `0.0` and `1.0`. `1.0` enforces culling of extreme visual artifacts, while `0.0` calculates absolute bounds.
+    /// * `animations` - A slice of references to `Anim` objects representing the animation sequences to evaluate.
+    /// * `tolerance` - A floating-point threshold between `0.0` and `1.0`. A value of `1.0` aggressively culls geometry resulting from scale extreme visual artifacts, while `0.0` strictly calculates the absolute mathematical outer limits.
     ///
     /// # Returns
-    /// An `Option` containing a tuple representing `(x, y, width, height)`. Returns `None` if the unit is completely invisible.
+    /// An `Option` containing a tuple representing `(min_x, min_y, total_width, total_height)`.
+    /// Returns `None` if the unit evaluates to completely invisible across all provided frames.
     pub fn calculate_bounds(
         &self,
         animations: &[&Anim],
@@ -57,17 +73,23 @@ impl Unit {
         Some((bounds.min_x, bounds.min_y, bounds.width(), bounds.height()))
     }
 
-    /// Scans the `Unit` to find a repeating animation loop.
+    /// Scans a unit's chronological animation timeline to programmatically detect repeating spatial loops.
+    ///
+    /// This function simulates the skeleton's state frame-by-frame and compares the resulting
+    /// world-space transformation matrices. A loop is identified when the mathematical difference
+    /// between the current frame's hierarchy and a previously recorded frame's hierarchy falls
+    /// beneath the provided tolerance threshold.
     ///
     /// # Arguments
-    /// * `animation` - The animation sequence to evaluate.
-    /// * `tolerance` - The maximum allowable deviation between two transformation matrices to be considered a match.
-    /// * `minimum_frame` - The earliest frame a loop is permitted to begin.
-    /// * `maximum_frame` - An optional upper frame limit for the search.
-    /// * `progress_callback` - A closure called every frame. If the closure returns `false`, the search aborts.
+    /// * `animation` - The specific `Anim` sequence timeline to analytically evaluate.
+    /// * `tolerance` - The maximum allowable delta between two hierarchical matrix states to be considered a visual match.
+    /// * `minimum_frame` - An optional floor constraint; the earliest chronological frame where a valid loop is permitted to begin.
+    /// * `maximum_frame` - An optional ceiling constraint; if the search exceeds this frame without finding a match, the algorithm aborts.
+    /// * `progress_callback` - A mutable closure invoked at the start of every frame evaluation. If the closure evaluates to `false`, the search immediately terminates. Useful for threaded cancellations.
     ///
     /// # Returns
-    /// An `Option` containing a tuple of `(loop_start_frame, loop_end_frame)`. Returns `None` if no loop is found.
+    /// An `Option` containing a tuple of `(loop_start_frame, loop_end_frame)`.
+    /// Returns `None` if the timeline exhausts the `maximum_frame` or triggers user abortion without identifying a valid loop.
     pub fn calculate_cycle(
         &self,
         animation: &Anim,
@@ -89,8 +111,8 @@ impl Unit {
 
             if let Some(maximum) = maximum_frame
                 && current_frame > maximum as usize {
-                    return None;
-                }
+                return None;
+            }
 
             let frame_float = current_frame as f32;
             let _ = timeline::animate(&self.model, animation, frame_float, &mut state_buffer);
@@ -122,40 +144,41 @@ impl Unit {
 }
 
 /// Represents the pre-calculated, hardware-agnostic geometric and visual state of a single
-/// model part for a specific animation frame.
+/// model part for a specific, locked animation frame.
 ///
 /// This structure acts as the intermediary payload between the pure mathematical domain
 /// library and the hardware-accelerated orchestrator, providing flat, contiguous memory
-/// buffers suitable for direct GPU ingestion.
+/// buffers inherently suitable for direct GPU ingestion or vertex array allocation.
 #[derive(Clone, Debug, Default)]
 pub struct FrameData {
-    /// The index mapping to the specific sprite cut in the associated `SpriteSheet`.
+    /// The index mapping to the localized sprite cut within the parent `SpriteSheet`.
     pub sprite_index: usize,
     /// The 3x3 affine transformation matrix representing the part's absolute world-space position, rotation, and scale.
     pub final_matrix: [f32; 9],
-    /// The local spatial coordinates bounding the part, formatted as a flat array of 12 floats (two triangles, 6 vertices, x/y pairs).
+    /// The local spatial coordinates bounding the part, formatted as a flat array of 12 floats (two triangles, 6 vertices, structured as x/y pairs).
     pub vertices: [f32; 12],
-    /// The texture mapping coordinates corresponding to the `vertices`, formatted as a flat array of 12 floats.
+    /// The texture mapping coordinates corresponding exactly to the `vertices`, formatted as a flat array of 12 floats.
     pub uvs: [f32; 12],
-    /// The final calculated alpha transparency of the part, bounded between 0.0 and 1.0.
+    /// The chronologically calculated alpha transparency of the part, bounded between 0.0 and 1.0.
     pub opacity: f32,
-    /// A boolean flag indicating whether the additive blending (glow) shader should be applied to this part.
+    /// A localized flag indicating whether the additive blending (glow) rasterization shader must be applied to this specific part.
     pub glow: i32,
 }
 
-/// Computes the complete world-space geometry for a unit at a specific point in time.
+/// Computes the complete world-space geometry for a unit at a specific temporal coordinate.
 ///
-/// This function acts as the primary front-facing API for the rendering pipeline. It fully isolates
-/// the mathematical computation of the skeletal timeline, hierarchical matrix resolution, and sprite
-/// bounding from any external graphics context or camera projection math.
+/// This function acts as the primary front-facing data extraction API for the rendering pipeline. It fully
+/// isolates the mathematical computation of the skeletal timeline, hierarchical matrix resolution, and sprite
+/// extraction from any external graphics context, hardware state, or projection math.
 ///
 /// # Arguments
-/// * `unit` - A reference to the parsed `Unit` containing the base skeletal model and texture atlas.
-/// * `anim` - An optional reference to an `Anim`. If `Some`, the timeline interpolates the model's parts to the specified frame. If `None`, the model remains evaluated in its default rest pose.
-/// * `frame` - The precise chronological time value to evaluate.
+/// * `unit` - A reference to the parsed `Unit` containing the base skeletal model and mapped texture atlas.
+/// * `anim` - An optional reference to an `Anim`. If `Some`, the timeline interpolates the model's parts to the specified frame. If `None`, the model remains statically evaluated in its default rest pose.
+/// * `frame` - The precise chronological floating-point time value to execute matrix evaluations against.
 ///
 /// # Returns
-/// A dynamically allocated `Vec` containing the compiled `FrameData` for every visible part, sorted by drawing order layer.
+/// A dynamically allocated `Vec` containing the populated `FrameData` payloads for every visible part,
+/// sorted strictly by their chronological drawing order (z-index) layer.
 pub fn resolve_frame(
     unit: &Unit,
     anim: Option<&Anim>,
@@ -172,5 +195,5 @@ pub fn resolve_frame(
 
     let world_parts = transform::solve_hierarchy(&parts, &unit.model);
 
-    crate::graphics::game::construct::build_geometry(&world_parts, &unit.sheet)
+    construct::build_geometry(&world_parts, &unit.sheet)
 }

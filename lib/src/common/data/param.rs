@@ -103,22 +103,17 @@ pub struct Param {
 }
 
 impl Param {
-    /// PUBLIC API: Parses a byte slice into a Param struct.
     pub fn parse<B: AsRef<[u8]>>(bytes: B) -> Result<Self, ParamError> {
         parse_inner(bytes.as_ref())
     }
 }
 
-/// PRIVATE INNER: Does the heavy lifting.
 fn parse_inner(bytes: &[u8]) -> Result<Param, ParamError> {
     let file_content = csv::scrub(bytes);
     let mut values = Vec::new();
 
     for line in file_content.lines() {
         if line.trim().is_empty() { continue; }
-
-        // `param.tsv` uses a mix of spaces and tabs.
-        // Splitting by whitespace and taking the last segment isolates the integer.
         if let Some(val_str) = line.split_whitespace().last() {
             if let Ok(val) = val_str.parse::<i32>() {
                 values.push(val);

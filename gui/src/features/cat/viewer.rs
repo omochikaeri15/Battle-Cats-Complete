@@ -21,7 +21,7 @@ pub fn show(
     cat_entry: &CatEntry,
     current_form: usize,
     anim_viewer: &mut AnimViewer,
-    unit_sync: &mut Option<Arc<Unit>>, // Waiter Pattern Bridge
+    unit_sync: &mut Option<Arc<Unit>>,
     settings: &mut Settings,
     drag_guard: &mut DragGuard,
 ) {
@@ -33,7 +33,7 @@ pub fn show(
 
         if c.0 != primary_id {
             let root = Path::new(paths::DIR_CATS);
-            let egg_ids = cat_entry.egg_ids;
+            let egg_ids = cat_entry.egg_ids.unwrap_or((-1, -1));
             let priority = &settings.general.language_priority;
 
             let mut available_anims = Vec::new();
@@ -61,7 +61,6 @@ pub fn show(
                 Some((png, cut, model))
             })();
 
-            // Secondary logic remained identical, omitting for brevity in block
             let secondary_assets = None;
             let secondary_id = String::new();
 

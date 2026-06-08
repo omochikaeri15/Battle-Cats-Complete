@@ -4,7 +4,7 @@ use std::sync::Arc;
 use core::cat::logic::scanner::CatEntry;
 use crate::features::cat::header::DetailTab;
 use crate::global::sheet::GuiSpriteSheet;
-use nyanko::graphics::animation::Unit; // Add Rig import
+use nyanko::graphics::animation::Unit;
 use core::settings::logic::Settings;
 use crate::features::animation::viewer::AnimViewer;
 use nyanko::cat::unit::TalentCost;
@@ -55,12 +55,12 @@ pub fn show(
     let form_allows_talents = *current_form >= 2;
 
     let final_stats_owned = base_stats.map(|base| core::cat::logic::stats::get_final_stats(
-            base,
-            cat_entry.curve.as_ref(),
-            *current_level,
-            if form_allows_talents { cat_entry.talent_data.as_ref() } else { None },
-            if form_allows_talents { Some(&*talent_levels) } else { None }
-        ));
+        base,
+        cat_entry.curve.as_ref(),
+        *current_level,
+        if form_allows_talents { cat_entry.talent_data.as_ref() } else { None },
+        if form_allows_talents { Some(&*talent_levels) } else { None }
+    ));
 
     let global_ctx = GlobalContext { param };
 
@@ -110,14 +110,13 @@ pub fn show(
     ui.separator();
     ui.add_space(0.0);
 
-    // FIX: Clear the new held_unit structure
     if *current_tab != DetailTab::Animation
         && !anim_viewer.loaded_id.is_empty() {
-            anim_viewer.held_unit = None;
-            anim_viewer.current_anim = None;
-            anim_viewer.loaded_id.clear();
-            *unit_sync = None;
-        }
+        anim_viewer.held_unit = None;
+        anim_viewer.current_anim = None;
+        anim_viewer.loaded_id.clear();
+        *unit_sync = None;
+    }
 
     match current_tab {
         DetailTab::Abilities => {
@@ -153,7 +152,7 @@ pub fn show(
         },
         DetailTab::Details => {
             let fallback = Vec::new();
-            let desc = cat_entry.description.get(*current_form).unwrap_or(&fallback);
+            let desc = cat_entry.description[*current_form].as_ref().unwrap_or(&fallback);
             details::render(ui, desc);
             let text_fallback = Vec::new();
             let ev_text = cat_entry.evolve_text.texts.get(*current_form).unwrap_or(&text_fallback);

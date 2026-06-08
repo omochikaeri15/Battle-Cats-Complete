@@ -9,15 +9,22 @@ pub enum LevelError {
 impl fmt::Display for LevelError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            LevelError::EmptyFile => write!(f, "The provided file bytes contained no valid unit level data."),
+            Self::EmptyFile => write!(f, "The provided file bytes contained no valid unit level data."),
         }
     }
 }
 
 impl std::error::Error for LevelError {}
 
+/// Defines the mathematical growth trajectory for an entity's statistics.
+///
+/// This structure stores the sequence of percentage-based scaling increments
+/// representing discrete growth brackets. It provides the pure fixed-point
+/// algorithm required to accurately project an entity's statistical values
+/// at any given level index.
 #[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct LevelCurve {
+    /// The sequence of scaling factors, where each index maps to a 10-level progression bracket.
     pub increments: Vec<u16>,
 }
 
@@ -59,13 +66,11 @@ impl LevelCurve {
         final_stat as i32
     }
 
-    /// PUBLIC API: Parses a byte slice into a vector of LevelCurves.
     pub fn parse<B: AsRef<[u8]>>(bytes: B) -> Result<Vec<Self>, LevelError> {
         parse_inner(bytes.as_ref())
     }
 }
 
-/// PRIVATE INNER: Does the heavy lifting.
 fn parse_inner(bytes: &[u8]) -> Result<Vec<LevelCurve>, LevelError> {
     let file_content = csv::scrub(bytes);
     let delimiter = csv::detect_separator(&file_content);
