@@ -1,9 +1,10 @@
 use std::collections::{HashMap, HashSet};
-use crate::enemy::registry::{AbilityIcon, Magnification, ENEMY_ABILITY_REGISTRY, ENEMY_STATS_REGISTRY};
+use crate::enemy::registry::{AbilityIcon, Magnification, ENEMY_STATS_REGISTRY, get_display_def};
 use nyanko::enemy::unit::Battle;
 use crate::enemy::logic::scanner::EnemyEntry;
 use crate::global::game::abilities::CustomIcon;
 use nyanko::common::img015;
+use nyanko::enemy::abilities::REGISTRY;
 
 pub const ATTACK_TYPE_ICONS: &[AbilityIcon] = &[
     AbilityIcon::Standard(img015::ICON_SINGLE_ATTACK),
@@ -61,21 +62,25 @@ pub fn get_stat_value(s: &Battle, stat: &str, anim_frames: i32, mag: i32) -> i32
         "Atk Cycle (f)" => "Atk Cycle",
         _ => stat,
     };
-    
+
     if let Some(def) = ENEMY_STATS_REGISTRY.iter().find(|d| d.name == reg_name) {
         let magnification = Magnification { hitpoints: mag, attack: mag };
         return (def.get_value)(s, anim_frames, magnification);
     }
-    0 
+    0
 }
 
 pub fn get_icon_name(icon: AbilityIcon) -> String {
-    ENEMY_ABILITY_REGISTRY.iter().find(|d| d.icon == icon).map(|d| d.name).unwrap_or("Unknown").to_string()
+    REGISTRY.iter()
+        .find(|d| get_display_def(d.identity).icon == icon)
+        .map(|d| get_display_def(d.identity).name)
+        .unwrap_or("Unknown")
+        .to_string()
 }
 
 pub fn has_trait_or_ability(s: &Battle, icon: AbilityIcon) -> bool {
-    ENEMY_ABILITY_REGISTRY.iter().find(|d| d.icon == icon).is_some_and(|def| {
-        !(def.get_attributes)(s).is_empty()
+    REGISTRY.iter().find(|d| get_display_def(d.identity).icon == icon).is_some_and(|def| {
+        !(def.attributes)(s).is_empty()
     })
 }
 
@@ -97,7 +102,7 @@ pub fn entity_passes_filter(enemy: &EnemyEntry, filter: &EnemyFilterState) -> bo
         for (stat_name, range) in &filter.stat_ranges {
             if range.min.is_empty() && range.max.is_empty() { continue; }
             active_conditions += 1;
-            
+
             let val = get_stat_value(stats, stat_name, enemy.atk_anim_frames, mag);
 
             let r_min = range.min.parse::<i32>().unwrap_or(i32::MIN);
@@ -118,36 +123,39 @@ pub fn entity_passes_filter(enemy: &EnemyEntry, filter: &EnemyFilterState) -> bo
             let has_inherent = has_trait_or_ability(stats, ability_icon);
             let mut icon_passed = false;
 
-            let ability_def = ENEMY_ABILITY_REGISTRY.iter().find(|d| d.icon == ability_icon);
+            let ability_def = REGISTRY.iter().find(|d| get_display_def(d.identity).icon == ability_icon);
 
             if has_inherent {
                 if let Some(adv_map) = filter.adv_ranges.get(&ability_icon) {
                     let mut build_passed_all_attrs = true;
-                    
-                    let attrs = ability_def.map(|def| (def.get_attributes)(stats)).unwrap_or_default();
-                    
+
+                    let attrs = ability_def.map(|def| (def.attributes)(stats)).unwrap_or_default();
+
                     for (attr, range) in adv_map {
                         let mut val = attrs.iter()
                             .find(|(k, _, _)| k == attr)
                             .map(|(_, v, _)| *v)
                             .unwrap_or(0);
-                        
-                        if let Some(def) = ability_def
-                            && def.minus_one_is_inf && val == -1 {
+
+                        if let Some(def) = ability_def {
+                            if def.minus_one_is_inf && val == -1 {
                                 val = i32::MAX;
                             }
+                        }
 
-                        if let Ok(min) = range.min.parse::<i32>()
-                            && val < min {
+                        if let Ok(min) = range.min.parse::<i32>() {
+                            if val < min {
                                 build_passed_all_attrs = false;
                                 break;
                             }
-                        
-                        if let Ok(max) = range.max.parse::<i32>()
-                            && val > max {
+                        }
+
+                        if let Ok(max) = range.max.parse::<i32>() {
+                            if val > max {
                                 build_passed_all_attrs = false;
                                 break;
                             }
+                        }
                     }
 
                     if build_passed_all_attrs {
@@ -167,7 +175,7 @@ pub fn entity_passes_filter(enemy: &EnemyEntry, filter: &EnemyFilterState) -> bo
     }
 
     if active_conditions == 0 {
-        return true; 
+        return true;
     }
 
     if filter.match_mode == MatchMode::And {

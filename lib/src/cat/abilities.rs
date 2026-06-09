@@ -258,8 +258,6 @@ pub static REGISTRY: &[Ability] = &[
         },
         apply_talent: Some(|stats,_,_,_| stats.target_eva = 1),
     },
-
-    // --- DAMAGE / DEFENSE MODIFIERS ---
     Ability {
         identity: Identity::AttackOnly,
         talent_id: 4,
@@ -523,8 +521,6 @@ pub static REGISTRY: &[Ability] = &[
         },
         apply_talent: None,
     },
-
-    // --- ATTACK MECHANICS ---
     Ability {
         identity: Identity::MultiHit,
         talent_id: 0,
@@ -750,8 +746,6 @@ pub static REGISTRY: &[Ability] = &[
         },
         apply_talent: Some(|stats, chance, _, _| stats.critical_chance += chance),
     },
-
-    // --- STATE MODIFIERS ---
     Ability {
         identity: Identity::Strengthen,
         talent_id: 10,
@@ -922,8 +916,6 @@ pub static REGISTRY: &[Ability] = &[
         },
         apply_talent: None,
     },
-
-    // --- IMMUNITIES ---
     Ability {
         identity: Identity::ImmuneWave,
         talent_id: 48,
@@ -1056,8 +1048,6 @@ pub static REGISTRY: &[Ability] = &[
         },
         apply_talent: Some(|stats,_,_,_| stats.boss_wave_immune = 1),
     },
-
-    // --- RESISTANCES ---
     Ability {
         identity: Identity::ResistWeaken,
         talent_id: 18,
@@ -1148,8 +1138,6 @@ pub static REGISTRY: &[Ability] = &[
         attributes: |_| vec![],
         apply_talent: Some(|_,_,_,_| {}),
     },
-
-    // --- STAT TALENTS ---
     Ability {
         identity: Identity::CostDown,
         talent_id: 25,

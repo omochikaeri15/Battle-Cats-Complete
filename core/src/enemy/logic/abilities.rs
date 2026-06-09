@@ -1,11 +1,12 @@
-use crate::enemy::registry::{self, DisplayGroup, AttrUnit, AbilityIcon};
+use crate::enemy::registry::{self, DisplayGroup, AbilityIcon};
 use crate::global::game::abilities::{AbilityItem, CustomIcon};
 use crate::enemy::logic::context::EnemyRenderContext;
+use nyanko::enemy::abilities::{REGISTRY, AttrUnit};
 
 pub fn collect_ability_data(
     ctx: &EnemyRenderContext,
 ) -> (Vec<AbilityItem>, Vec<AbilityItem>, Vec<AbilityItem>, Vec<AbilityItem>, Vec<AbilityItem>, Vec<AbilityItem>) {
-    
+
     let mut group_trait = Vec::new();
     let mut group_headline_1 = Vec::new();
     let mut group_headline_2 = Vec::new();
@@ -13,22 +14,28 @@ pub fn collect_ability_data(
     let mut group_body_2 = Vec::new();
     let mut group_footer = Vec::new();
 
-    for def in registry::ENEMY_ABILITY_REGISTRY {
-        if def.group == DisplayGroup::Hidden { continue; } 
+    for def in REGISTRY {
+        let display_def = registry::get_display_def(def.identity);
 
-        let attrs = (def.get_attributes)(ctx.stats);
-        
+        if display_def.group == DisplayGroup::Hidden { continue; }
+
+        let attrs = (def.attributes)(ctx.stats);
+
         if !attrs.is_empty() {
             let val = attrs.first().map(|(_, v, _)| *v).unwrap_or(0);
             let dur = attrs.iter().find(|(_, _, u)| *u == AttrUnit::Frames).map(|(_, v, _)| *v).unwrap_or(0);
-            let text = (def.formatter)(val, ctx.stats, dur, ctx.magnification, ctx.global.param);
-            let (final_icon, custom_icon) = match def.icon {
+
+            let text = (display_def.formatter)(val, ctx.stats, dur, ctx.magnification, ctx.global.param);
+
+            let (final_icon, custom_icon) = match display_def.icon {
                 AbilityIcon::Standard(id) => (Some(id), CustomIcon::None),
                 AbilityIcon::Custom(icon) => (None, icon),
+                AbilityIcon::None => (None, CustomIcon::None),
             };
+
             let item = AbilityItem { icon_id: final_icon, text, custom_icon, border_id: None };
 
-            match def.group {
+            match display_def.group {
                 DisplayGroup::Type => group_trait.push(item),
                 DisplayGroup::Headline1 => group_headline_1.push(item),
                 DisplayGroup::Headline2 => group_headline_2.push(item),
