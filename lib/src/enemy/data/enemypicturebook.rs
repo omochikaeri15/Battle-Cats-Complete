@@ -2,6 +2,7 @@ use std::fmt;
 use std::error;
 use crate::common::utils::csv;
 
+/// Represents errors that can occur during the parsing of enemy picture book descriptions.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EnemyPictureBookError {
     EmptyData,
@@ -17,16 +18,37 @@ impl fmt::Display for EnemyPictureBookError {
 
 impl error::Error for EnemyPictureBookError {}
 
+/// Represents the localized multi-line dictionary description for an enemy entity.
+///
+/// Automatically strips internal placeholders (such as "仮") and null characters,
+/// returning a clean, structured array of strings ready for rendering.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct EnemyPictureBook {
+    /// A vector of parsed text lines. Evaluates to `None` if the description is missing or invalid.
     pub description: Option<Vec<String>>,
 }
 
 impl EnemyPictureBook {
+    /// Parses a raw byte stream into a vector of `EnemyPictureBook` structures.
+    ///
+    /// # Arguments
+    /// * `b` - The raw byte slice of the picture book description file.
+    ///
+    /// # Returns
+    /// A `Result` containing the vector of structured `EnemyPictureBook`s on success, or an
+    /// `EnemyPictureBookError` if the file contained no parseable text.
     pub fn parse_all<T: AsRef<[u8]>>(b: T) -> Result<Vec<Self>, EnemyPictureBookError> {
         parse_all_inner(b.as_ref())
     }
 
+    /// Safely extracts and parses a single `EnemyPictureBook` based on its internal ID line index.
+    ///
+    /// # Arguments
+    /// * `b` - The raw byte slice of the picture book description file.
+    /// * `id` - The specific line index corresponding to the enemy's internal ID.
+    ///
+    /// # Returns
+    /// A `Result` containing an `Option<EnemyPictureBook>` if the line exists, or `None` if the ID is out of bounds.
     pub fn parse<T: AsRef<[u8]>>(b: T, id: usize) -> Result<Option<Self>, EnemyPictureBookError> {
         parse_inner(b.as_ref(), id)
     }

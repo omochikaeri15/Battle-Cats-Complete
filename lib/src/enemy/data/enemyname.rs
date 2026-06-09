@@ -2,6 +2,7 @@ use std::fmt;
 use std::error;
 use crate::common::utils::csv;
 
+/// Represents errors that can occur during the parsing of localized enemy names.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EnemyNameError {
     EmptyData,
@@ -17,16 +18,38 @@ impl fmt::Display for EnemyNameError {
 
 impl error::Error for EnemyNameError {}
 
+/// Represents the localized display name for an enemy entity.
+///
+/// This structure cleanly encapsulates a sanitized string. It automatically identifies
+/// and rejects internal developer placeholders (such as "ダミー") to ensure the UI
+/// does not render invalid terminology. Missing or invalid names evaluate to `None`.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct EnemyName {
+    /// The parsed display name. `None` if the name is a placeholder or empty.
     pub name: Option<String>,
 }
 
 impl EnemyName {
+    /// Parses a raw byte stream into a vector of `EnemyName` structures.
+    ///
+    /// # Arguments
+    /// * `b` - The raw byte slice of the terminology file.
+    ///
+    /// # Returns
+    /// A `Result` containing the vector of structured `EnemyName`s on success, or an
+    /// `EnemyNameError` if the file contained no parseable text.
     pub fn parse_all<T: AsRef<[u8]>>(b: T) -> Result<Vec<Self>, EnemyNameError> {
         parse_all_inner(b.as_ref())
     }
 
+    /// Safely extracts and parses a single `EnemyName` based on its internal ID line index.
+    ///
+    /// # Arguments
+    /// * `b` - The raw byte slice of the terminology file.
+    /// * `id` - The specific line index corresponding to the enemy's internal ID.
+    ///
+    /// # Returns
+    /// A `Result` containing an `Option<EnemyName>` if the line exists, or `None` if the ID is out of bounds.
     pub fn parse<T: AsRef<[u8]>>(b: T, id: usize) -> Result<Option<Self>, EnemyNameError> {
         parse_inner(b.as_ref(), id)
     }

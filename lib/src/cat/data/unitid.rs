@@ -19,8 +19,8 @@ impl std::error::Error for BattleError {}
 
 /// Represents the complete statistical and behavioral profile for a single entity form.
 ///
-/// This structure defines the strictly ordered array of combat parameters, execution 
-/// timings, targeting flags, and specialized ability modifiers mapping directly to 
+/// This structure defines the strictly ordered array of combat parameters, execution
+/// timings, targeting flags, and specialized ability modifiers mapping directly to
 /// the application's internal simulation engine.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct Battle {

@@ -1,14 +1,35 @@
+//! Core domain definitions for enemy abilities and combat mechanics.
+//!
+//! This module bridges the raw, byte-centric data stored in the `Battle` struct
+//! with dynamically evaluated combat mechanics. It strictly maps raw values to
+//! strongly-typed attributes and handles engine quirks.
+
 use crate::enemy::unit::Battle;
 use crate::common::data::img015;
 
+/// Represents the mathematical or logical unit of measurement for an ability's attribute.
+///
+/// Because the game data stores all values as flat integers (e.g., `50`), this enum provides
+/// the necessary context to determine whether that integer represents a percentage, a
+/// frame count, a spatial distance, or a raw numerical value. This is critical for both
+/// accurate calculations and UI formatting.
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum AttrUnit {
+    /// A raw integer value. Used for standard counts (e.g., number of burrows) or flat numerical values.
     None,
+    /// A percentage modifier (0-100+). Used for probability chances, damage multipliers, and stat reductions.
     Percent,
+    /// A temporal measurement defined in engine ticks (30 frames = 1 second). Used for effect durations.
     Frames,
+    /// A spatial measurement defined in engine coordinate units. Used for attack ranges, spawn anchors, and widths.
     Range,
 }
 
+/// A comprehensive enumeration acting as the unique domain identifier for every known
+/// trait, ability, immunity, and stat modifier belonging to enemies.
+///
+/// This serves as a strongly-typed key, avoiding the need to pass around string
+/// comparisons or raw, contextless integer IDs when checking an enemy's capabilities.
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub enum Identity {
     SingleAttack, AreaAttack, TypeRed, TypeFloating, TypeDark, TypeMetal, TypeAngel,
@@ -22,20 +43,44 @@ pub enum Identity {
     ImmuneCurse, ImmuneWarp, CounterSurge
 }
 
+/// The pure domain definition of an enemy combat mechanic (Ability, Trait, or Immunity).
+///
+/// This structure bridges the gap between raw, static game data and dynamically evaluated
+/// combat mechanics. It dictates how an ability is identified, its mathematical schema,
+/// and how its raw attributes are dynamically extracted from the core `Battle` stat block.
 pub struct Ability {
+    /// The strongly-typed domain identifier for this ability.
     pub identity: Identity,
+    /// An optional reference to the sprite index in the `img015` icon atlas used for UI rendering.
     pub icon_id: Option<usize>,
+    /// The human-readable display name of the ability.
     pub name: &'static str,
+    /// A descriptive string detailing the ability's mechanical behavior.
     pub description: &'static str,
+    /// A localized schema outlining the expected parameters for this ability.
+    /// Pairs a descriptive string (e.g., "Duration") with its expected `AttrUnit` (e.g., `AttrUnit::Frames`).
     pub schema: &'static [(&'static str, AttrUnit)],
+    /// A closure that evaluates an enemy's `Battle` stat block and dynamically extracts the localized
+    /// values for this specific ability, returning them mapped to their schema names and units.
     pub attributes: fn(&Battle) -> Vec<(&'static str, i32, AttrUnit)>,
+    /// An engine-specific flag indicating whether a raw value of `-1` should be mathematically
+    /// treated as "infinite" (e.g., infinite burrows or infinite revives).
     pub minus_one_is_inf: bool,
 }
 
+/// Locates and returns a static reference to an `Ability` definition based on its domain identity.
+///
+/// # Arguments
+/// * `identity` - The `Identity` enum variant representing the target ability.
+///
+/// # Returns
+/// An `Option` containing a static reference to the corresponding `Ability`, or `None` if the identity is somehow unmapped.
 pub fn get_ability(identity: Identity) -> Option<&'static Ability> {
     REGISTRY.iter().find(|ability| ability.identity == identity)
 }
 
+/// The global, statically allocated registry containing the domain definitions for every known
+/// enemy ability, trait, immunity, and stat modifier in the game.
 pub static REGISTRY: &[Ability] = &[
     Ability {
         identity: Identity::SingleAttack,

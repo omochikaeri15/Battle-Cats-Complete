@@ -2,6 +2,7 @@ use std::fmt;
 use std::error;
 use crate::common::utils::csv;
 
+/// Represents errors that can occur during the parsing of raw enemy battle data.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BattleError {
     EmptyData,
@@ -17,6 +18,11 @@ impl fmt::Display for BattleError {
 
 impl error::Error for BattleError {}
 
+/// Represents the complete statistical and behavioral combat profile for an enemy.
+///
+/// This structure defines the strictly ordered array of combat parameters, execution
+/// timings, targeting flags, and specialized ability modifiers mapping directly to
+/// the application's internal simulation engine.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct Battle {
     pub hitpoints: i32,
@@ -136,6 +142,13 @@ pub struct Battle {
 }
 
 impl Battle {
+    /// Calculates the absolute duration of an attack cycle in engine frames.
+    ///
+    /// # Arguments
+    /// * `frames` - The chronological frame count parsed from the unit's animation sequence.
+    ///
+    /// # Returns
+    /// The total mathematical duration of the attack cycle.
     pub fn attack_cycle(&self, frames: i32) -> i32 {
         let mut effective_foreswing = self.time_until_attack_1;
 
@@ -151,10 +164,26 @@ impl Battle {
         (effective_foreswing + cooldown_frames).max(frames)
     }
 
+    /// Parses a raw byte stream into a comprehensive vector of `Battle` stat blocks.
+    ///
+    /// # Arguments
+    /// * `b` - The raw byte slice representing the data matrix.
+    ///
+    /// # Returns
+    /// A `Result` containing the vector of `Battle`s on success, or a
+    /// `BattleError` if the file was empty or corrupted.
     pub fn parse_all<T: AsRef<[u8]>>(b: T) -> Result<Vec<Self>, BattleError> {
         parse_all_inner(b.as_ref())
     }
 
+    /// Safely extracts and parses a single `Battle` stat block based on its internal ID line index.
+    ///
+    /// # Arguments
+    /// * `b` - The raw byte slice representing the data matrix.
+    /// * `id` - The specific line index corresponding to the enemy's internal ID.
+    ///
+    /// # Returns
+    /// A `Result` containing an `Option<Battle>` if the line exists, or `None` if the ID is out of bounds.
     pub fn parse<T: AsRef<[u8]>>(b: T, id: usize) -> Result<Option<Self>, BattleError> {
         parse_inner(b.as_ref(), id)
     }
