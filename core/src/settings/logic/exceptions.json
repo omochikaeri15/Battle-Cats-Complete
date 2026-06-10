@@ -307,7 +307,7 @@
       "locked": true
     },
     {
-      "pattern": "(udi|uni|gatyachara_)?(848|840)_[fc]",
+      "pattern": "(udi|uni|gatyachara_)?(848|840)_[fc](00)?",
       "extension": "png|imgcut",
       "handling": "Include",
       "languages": {
