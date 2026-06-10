@@ -21,11 +21,6 @@ impl BattleCatsApp {
             let _ = core::settings::logic::desktop::sync_desktop_data();
         }
 
-        #[cfg(not(debug_assertions))]
-        if app.current_page == Page::Stages {
-            app.current_page = Page::Home;
-        }
-
         lang::ensure_complete_list(&mut app.settings.general.language_priority);
 
         setup_custom_fonts(&creation_context.egui_ctx);

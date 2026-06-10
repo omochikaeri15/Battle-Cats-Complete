@@ -1,6 +1,8 @@
 use eframe::egui;
+use std::sync::atomic::Ordering;
 use core::settings::logic::state::{GeneralSettings, RuntimeState};
-use core::settings::logic::{lang, upd::UpdateMode};
+use core::settings::logic::{lang, nightly, upd::UpdateMode};
+use super::tabs::toggle_ui;
 
 #[cfg(target_os = "linux")]
 use core::settings::logic::desktop;
@@ -29,7 +31,8 @@ pub fn show(ui_container: &mut egui::Ui, settings: &mut GeneralSettings, runtime
         .auto_shrink([false, true])
         .show(ui_container, |scroll_ui| {
 
-            scroll_ui.heading("System & Updates");
+            // --- SYSTEM SECTION ---
+            scroll_ui.heading("System");
             scroll_ui.add_space(5.0);
 
             #[cfg(target_os = "linux")]
@@ -117,8 +120,46 @@ pub fn show(ui_container: &mut egui::Ui, settings: &mut GeneralSettings, runtime
                 }
             }
 
+            // --- BEHAVIOR SECTION ---
+            scroll_ui.add_space(20.0);
+            scroll_ui.heading("Behavior");
             scroll_ui.add_space(5.0);
 
+            let features_available = nightly::NIGHTLY_FEATURES_ACTIVE.load(Ordering::Relaxed);
+
+            if !features_available {
+                settings.enable_nightly = false;
+            }
+
+            let nightly_row = scroll_ui.horizontal(|horizontal_ui| {
+                horizontal_ui.add_enabled_ui(features_available, |enabled_ui| {
+
+                    let toggle_resp = toggle_ui(enabled_ui, &mut settings.enable_nightly);
+                    let label_resp = enabled_ui.label("Enable Nightly Features 🌙");
+
+                    if toggle_resp.changed() {
+                        refresh_needed = true;
+                    }
+
+                    if features_available {
+                        let hint = "Enables work in progress \"Nightly\" features\n\
+                            Nightly features are signified using a crescent moon \"🌙\"\n\
+                            Expect bugs and poor performance when using Nightly features";
+
+                        toggle_resp.on_hover_text(hint);
+                        label_resp.on_hover_text(hint);
+                    }
+                });
+            }).response;
+
+            if !features_available {
+                nightly_row.on_hover_text(
+                    egui::RichText::new("This app version contains no Nightly features")
+                        .color(egui::Color32::from_rgb(230, 130, 10))
+                );
+            }
+
+            scroll_ui.add_space(8.0);
             scroll_ui.horizontal(|horizontal_ui| {
                 horizontal_ui.label("Update Handling:");
 
@@ -136,8 +177,9 @@ pub fn show(ui_container: &mut egui::Ui, settings: &mut GeneralSettings, runtime
                     });
             });
 
+            // --- LANGUAGE SECTION ---
             scroll_ui.add_space(20.0);
-            scroll_ui.heading("Language Priority");
+            scroll_ui.heading("Language");
             scroll_ui.add_space(5.0);
 
             scroll_ui.label("Drag to reorder. The app prioritizes assets from the top down.");
@@ -222,9 +264,9 @@ fn render_drag_list(ui_container: &mut egui::Ui, priority: &mut Vec<String>) -> 
 
     if let (Some(source), Some(target)) = (source_index, target_index)
         && source != target {
-            let item = priority.remove(source);
-            priority.insert(target, item);
-        }
+        let item = priority.remove(source);
+        priority.insert(target, item);
+    }
 
     just_dropped
 }

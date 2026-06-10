@@ -6,5 +6,6 @@ pub mod exceptions;
 pub mod keys;
 pub mod pem;
 pub mod desktop;
+pub mod nightly;
 
 pub use state::*;

@@ -23,13 +23,13 @@ pub struct ModsSettings {
     pub replace_on_update: bool,
 }
 
-
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct GeneralSettings {
     #[serde(default = "crate::settings::logic::lang::default_priority")]
     pub language_priority: Vec<String>,
     pub update_mode: UpdateMode,
+    pub enable_nightly: bool,
 }
 
 impl Default for GeneralSettings {
@@ -37,6 +37,7 @@ impl Default for GeneralSettings {
         Self {
             language_priority: lang::default_priority(),
             update_mode: UpdateMode::default(),
+            enable_nightly: false,
         }
     }
 }
@@ -73,7 +74,6 @@ impl Default for CatDataSettings {
 pub struct EnemyDataSettings {
     pub show_invalid_enemies: bool,
 }
-
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(default)]
@@ -145,6 +145,7 @@ pub struct RuntimeState {
     pub manual_check_requested: bool,
     pub active_tab: String,
     pub show_ip_field: bool,
+    pub dummy_has_nightly: bool,
 }
 
 impl Default for RuntimeState {
@@ -153,6 +154,7 @@ impl Default for RuntimeState {
             manual_check_requested: false,
             active_tab: "General".to_string(),
             show_ip_field: false,
+            dummy_has_nightly: false,
         }
     }
 }
