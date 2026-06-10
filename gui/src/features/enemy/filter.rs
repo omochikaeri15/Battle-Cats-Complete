@@ -6,10 +6,10 @@ use crate::global::assets::CustomAssets;
 use crate::global::shared::DragGuard;
 use core::enemy::registry::{DisplayGroup, AbilityIcon, get_display_def};
 use core::settings::logic::state::Settings;
-use nyanko::enemy::abilities::REGISTRY;
+use nyanko::enemy::abilities::{Identity, REGISTRY};
 
 pub use core::enemy::logic::filter::{EnemyFilterState, MatchMode};
-use core::enemy::logic::filter::{get_icon_name, ATTACK_TYPE_ICONS};
+use core::enemy::logic::filter::{get_identity_name, ATTACK_TYPE_IDENTITIES};
 
 pub const WINDOW_WIDTH: f32 = 500.0;
 pub const WINDOW_HEIGHT: f32 = 580.0;
@@ -86,7 +86,7 @@ pub fn show_popup(
                 });
                 ui.add_space(8.0);
 
-                let stat_keys = ["Attack", "Dps", "Range", "Atk Cycle (f)", "Hitpoints", "Knockbacks", "Speed", "Endure", "Cash Drop"];
+                let stat_keys = ["Attack", "Dps", "Range", "Atk Cycle (f)", "Hitpoints", "Knockbacks", "Speed", "Cash Drop"];
 
                 egui::Grid::new("stat_filter_grid")
                     .spacing([16.0, 6.0])
@@ -121,7 +121,7 @@ pub fn show_popup(
                     });
                 ui.add_space(15.0);
 
-                let mut rendered_icons = HashSet::new();
+                let mut rendered_identities = HashSet::new();
 
                 ui.heading("Trait Type");
                 ui.add_space(5.0);
@@ -130,23 +130,23 @@ pub fn show_popup(
                     for def in REGISTRY.iter() {
                         let display_def = get_display_def(def.identity);
                         if display_def.group == DisplayGroup::Type {
-                            render_filter_icon(ui, display_def.icon, &mut state.active_icons, sheets, assets);
-                            rendered_icons.insert(display_def.icon);
+                            render_filter_icon(ui, def.identity, &mut state.active_identities, sheets, assets);
+                            rendered_identities.insert(def.identity);
                         }
                     }
                 });
 
                 ui.add_space(8.0);
-                render_display_group(ui, state, &mut rendered_icons, DisplayGroup::Headline1, false, true, sheets, assets);
+                render_display_group(ui, state, &mut rendered_identities, DisplayGroup::Headline1, false, true, sheets, assets);
                 ui.add_space(15.0);
 
                 ui.heading("Attack Type");
                 ui.add_space(5.0);
                 ui.horizontal_wrapped(|ui| {
                     ui.spacing_mut().item_spacing = egui::vec2(4.0, 4.0);
-                    for &ability_icon in ATTACK_TYPE_ICONS {
-                        render_filter_icon(ui, ability_icon, &mut state.active_icons, sheets, assets);
-                        rendered_icons.insert(ability_icon);
+                    for &identity in ATTACK_TYPE_IDENTITIES {
+                        render_filter_icon(ui, identity, &mut state.active_identities, sheets, assets);
+                        rendered_identities.insert(identity);
                     }
                 });
                 ui.add_space(15.0);
@@ -154,10 +154,10 @@ pub fn show_popup(
                 ui.heading("Abilities");
                 ui.add_space(5.0);
 
-                render_display_group(ui, state, &mut rendered_icons, DisplayGroup::Headline2, false, true, sheets, assets);
-                render_display_group(ui, state, &mut rendered_icons, DisplayGroup::Body1, true, true, sheets, assets);
-                render_display_group(ui, state, &mut rendered_icons, DisplayGroup::Body2, true, true, sheets, assets);
-                render_display_group(ui, state, &mut rendered_icons, DisplayGroup::Footer, false, true, sheets, assets);
+                render_display_group(ui, state, &mut rendered_identities, DisplayGroup::Headline2, false, true, sheets, assets);
+                render_display_group(ui, state, &mut rendered_identities, DisplayGroup::Body1, true, true, sheets, assets);
+                render_display_group(ui, state, &mut rendered_identities, DisplayGroup::Body2, true, true, sheets, assets);
+                render_display_group(ui, state, &mut rendered_identities, DisplayGroup::Footer, false, true, sheets, assets);
                 ui.add_space(50.0);
             });
 
@@ -188,40 +188,40 @@ pub fn show_popup(
 fn render_display_group(
     ui: &mut egui::Ui,
     state: &mut EnemyFilterState,
-    rendered_icons: &mut HashSet<AbilityIcon>,
+    rendered_identities: &mut HashSet<Identity>,
     target_group: DisplayGroup,
     is_vertical: bool,
     draw_labels: bool,
     sheets: &[GuiSpriteSheet],
     assets: &CustomAssets,
 ) {
-    let mut icons_in_group = Vec::new();
+    let mut identities_in_group = Vec::new();
 
     for def in REGISTRY.iter() {
         let display_def = get_display_def(def.identity);
         if display_def.group != target_group { continue; }
         if display_def.group == DisplayGroup::Type { continue; }
-        if ATTACK_TYPE_ICONS.contains(&display_def.icon) { continue; }
-        if icons_in_group.contains(&display_def.icon) { continue; }
+        if ATTACK_TYPE_IDENTITIES.contains(&def.identity) { continue; }
+        if identities_in_group.contains(&def.identity) { continue; }
 
-        icons_in_group.push(display_def.icon);
-        rendered_icons.insert(display_def.icon);
+        identities_in_group.push(def.identity);
+        rendered_identities.insert(def.identity);
     }
 
-    if icons_in_group.is_empty() { return; }
+    if identities_in_group.is_empty() { return; }
 
     if is_vertical {
         ui.vertical(|ui| {
             ui.spacing_mut().item_spacing = egui::vec2(0.0, 4.0);
-            for ability_icon in icons_in_group {
-                render_filter_icon_row(ui, state, ability_icon, draw_labels, sheets, assets);
+            for identity in identities_in_group {
+                render_filter_icon_row(ui, state, identity, draw_labels, sheets, assets);
             }
         });
     } else {
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing = egui::vec2(4.0, 4.0);
-            for ability_icon in icons_in_group {
-                render_filter_icon(ui, ability_icon, &mut state.active_icons, sheets, assets);
+            for identity in identities_in_group {
+                render_filter_icon(ui, identity, &mut state.active_identities, sheets, assets);
             }
         });
     }
@@ -231,15 +231,15 @@ fn render_display_group(
 fn render_filter_icon_row(
     ui: &mut egui::Ui,
     state: &mut EnemyFilterState,
-    ability_icon: AbilityIcon,
+    identity: Identity,
     draw_labels: bool,
     sheets: &[GuiSpriteSheet],
     assets: &CustomAssets,
 ) {
-    let is_active = state.active_icons.contains(&ability_icon);
-    let name = get_icon_name(ability_icon);
+    let is_active = state.active_identities.contains(&identity);
+    let name = get_identity_name(identity);
 
-    let pure_def = REGISTRY.iter().find(|d| get_display_def(d.identity).icon == ability_icon);
+    let pure_def = REGISTRY.iter().find(|d| d.identity == identity);
     let schema = pure_def.map(|d| d.schema).unwrap_or(&[]);
     let has_adv = !schema.is_empty();
 
@@ -253,14 +253,14 @@ fn render_filter_icon_row(
         .show(ui, |ui| {
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
-                    render_filter_icon(ui, ability_icon, &mut state.active_icons, sheets, assets);
+                    render_filter_icon(ui, identity, &mut state.active_identities, sheets, assets);
 
                     if draw_labels {
                         ui.add_space(10.0);
                         let color = if is_active { egui::Color32::WHITE } else { egui::Color32::from_gray(120) };
                         if ui.add(egui::Label::new(egui::RichText::new(&name).color(color)).sense(egui::Sense::click())).clicked() {
-                            if is_active { state.active_icons.remove(&ability_icon); }
-                            else { state.active_icons.insert(ability_icon); }
+                            if is_active { state.active_identities.remove(&identity); }
+                            else { state.active_identities.insert(identity); }
                         }
                     }
                 });
@@ -274,7 +274,7 @@ fn render_filter_icon_row(
                                 ui.label(format!("{}:", attr));
 
                                 let range = state.adv_ranges
-                                    .entry(ability_icon)
+                                    .entry(identity)
                                     .or_default()
                                     .entry(attr)
                                     .or_default();
@@ -306,24 +306,26 @@ fn render_filter_icon_row(
 
 fn render_filter_icon(
     ui: &mut egui::Ui,
-    ability_icon: AbilityIcon,
-    active_icons: &mut HashSet<AbilityIcon>,
+    identity: Identity,
+    active_identities: &mut HashSet<Identity>,
     sheets: &[GuiSpriteSheet],
     assets: &CustomAssets,
 ) {
-    let is_active = active_icons.contains(&ability_icon);
+    let is_active = active_identities.contains(&identity);
     let tint = if is_active { egui::Color32::WHITE } else { egui::Color32::from_gray(80) };
 
-    match ability_icon {
+    let display_def = get_display_def(identity);
+
+    match display_def.icon {
         AbilityIcon::Custom(custom_icon) => {
             if let Some(tex) = assets.get_icon_texture(custom_icon) {
                 let img = egui::Image::new(tex).fit_to_exact_size(egui::vec2(32.0, 32.0)).tint(tint);
                 let response = ui.add(egui::ImageButton::new(img).frame(false));
                 if response.clicked() {
-                    if is_active { active_icons.remove(&ability_icon); }
-                    else { active_icons.insert(ability_icon); }
+                    if is_active { active_identities.remove(&identity); }
+                    else { active_identities.insert(identity); }
                 }
-                response.on_hover_text(get_icon_name(ability_icon));
+                response.on_hover_text(get_identity_name(identity));
                 return;
             }
         },
@@ -338,10 +340,10 @@ fn render_filter_icon(
 
                 let response = ui.add(egui::ImageButton::new(img).frame(false));
                 if response.clicked() {
-                    if is_active { active_icons.remove(&ability_icon); }
-                    else { active_icons.insert(ability_icon); }
+                    if is_active { active_identities.remove(&identity); }
+                    else { active_identities.insert(identity); }
                 }
-                response.on_hover_text(get_icon_name(ability_icon));
+                response.on_hover_text(get_identity_name(identity));
                 return;
             }
         },
@@ -355,8 +357,8 @@ fn render_filter_icon(
         ui.painter().text(rect.center(), egui::Align2::CENTER_CENTER, "?", egui::FontId::proportional(20.0), text_color);
     }
     if response.clicked() {
-        if is_active { active_icons.remove(&ability_icon); }
-        else { active_icons.insert(ability_icon); }
+        if is_active { active_identities.remove(&identity); }
+        else { active_identities.insert(identity); }
     }
-    response.on_hover_text(get_icon_name(ability_icon));
+    response.on_hover_text(get_identity_name(identity));
 }

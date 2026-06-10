@@ -182,39 +182,6 @@ fn fmt_sage(param: &Param) -> String {
 
 pub fn get_display_def(identity: Identity) -> AbilityDisplayDef {
     match identity {
-        // --- HIDDEN ---
-        Identity::SingleAttack => AbilityDisplayDef {
-            name: "Single Attack",
-            fallback: "Sngl",
-            icon: AbilityIcon::Standard(img015::ICON_SINGLE_ATTACK),
-            group: DisplayGroup::Body1,
-            formatter: |_, stats, _, _, _| {
-                let tba = fmt_time(stats.time_between_attacks);
-                if stats.attack_2 > 0 {
-                    format!("Time between attacks {}", tba)
-                } else {
-                    let tbh = fmt_time(stats.time_until_attack_1);
-                    format!("Time between attacks {}\nTime before hit {}", tba, tbh)
-                }
-            },
-        },
-        Identity::AreaAttack => AbilityDisplayDef {
-            name: "Area Attack",
-            fallback: "Area",
-            icon: AbilityIcon::Standard(img015::ICON_AREA_ATTACK),
-            group: DisplayGroup::Body1,
-            formatter: |_, stats, _, _, _| {
-                let tba = fmt_time(stats.time_between_attacks);
-                if stats.attack_2 > 0 {
-                    format!("Time between attacks {}", tba)
-                } else {
-                    let tbh = fmt_time(stats.time_until_attack_1);
-                    format!("Time between attacks {}\nTime before hit {}", tba, tbh)
-                }
-            },
-        },
-
-        // --- TRAITS ---
         Identity::TargetRed => AbilityDisplayDef {
             name: "Target Red",
             fallback: "Red",
@@ -463,6 +430,36 @@ pub fn get_display_def(identity: Identity) -> AbilityDisplayDef {
         },
 
         // --- BODY 1 ---
+        Identity::SingleAttack => AbilityDisplayDef {
+            name: "Single Attack",
+            fallback: "Sngl",
+            icon: AbilityIcon::Standard(img015::ICON_SINGLE_ATTACK),
+            group: DisplayGroup::Body1,
+            formatter: |_, stats, _, _, _| {
+                let tba = fmt_time(stats.time_between_attacks);
+                if stats.attack_2 > 0 {
+                    format!("Time between attacks {}", tba)
+                } else {
+                    let tbh = fmt_time(stats.time_until_attack_1);
+                    format!("Time between attacks {}\nTime before hit {}", tba, tbh)
+                }
+            },
+        },
+        Identity::AreaAttack => AbilityDisplayDef {
+            name: "Area Attack",
+            fallback: "Area",
+            icon: AbilityIcon::Standard(img015::ICON_AREA_ATTACK),
+            group: DisplayGroup::Body1,
+            formatter: |_, stats, _, _, _| {
+                let tba = fmt_time(stats.time_between_attacks);
+                if stats.attack_2 > 0 {
+                    format!("Time between attacks {}", tba)
+                } else {
+                    let tbh = fmt_time(stats.time_until_attack_1);
+                    format!("Time between attacks {}\nTime before hit {}", tba, tbh)
+                }
+            },
+        },
         Identity::MultiHit => AbilityDisplayDef {
             name: "Multi-Hit",
             fallback: "Multi",

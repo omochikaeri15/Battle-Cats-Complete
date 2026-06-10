@@ -1,17 +1,15 @@
 use std::collections::{HashMap, HashSet};
-use crate::enemy::registry::{AbilityIcon, Magnification, ENEMY_STATS_REGISTRY, get_display_def};
+use crate::enemy::registry::{Magnification, ENEMY_STATS_REGISTRY, get_display_def};
 use nyanko::enemy::unit::Battle;
 use crate::enemy::logic::scanner::EnemyEntry;
-use crate::global::game::abilities::CustomIcon;
-use nyanko::common::img015;
-use nyanko::enemy::abilities::REGISTRY;
+use nyanko::enemy::abilities::{Identity, REGISTRY};
 
-pub const ATTACK_TYPE_ICONS: &[AbilityIcon] = &[
-    AbilityIcon::Standard(img015::ICON_SINGLE_ATTACK),
-    AbilityIcon::Standard(img015::ICON_AREA_ATTACK),
-    AbilityIcon::Standard(img015::ICON_OMNI_STRIKE),
-    AbilityIcon::Standard(img015::ICON_LONG_DISTANCE),
-    AbilityIcon::Custom(CustomIcon::Multihit),
+pub const ATTACK_TYPE_IDENTITIES: &[Identity] = &[
+    Identity::SingleAttack,
+    Identity::AreaAttack,
+    Identity::OmniStrike,
+    Identity::LongDistance,
+    Identity::MultiHit,
 ];
 
 #[derive(Clone, Copy, PartialEq, Default)]
@@ -30,9 +28,9 @@ pub struct RangeInput {
 #[derive(Clone, PartialEq)]
 pub struct EnemyFilterState {
     pub is_open: bool,
-    pub active_icons: HashSet<AbilityIcon>,
+    pub active_identities: HashSet<Identity>,
     pub match_mode: MatchMode,
-    pub adv_ranges: HashMap<AbilityIcon, HashMap<&'static str, RangeInput>>,
+    pub adv_ranges: HashMap<Identity, HashMap<&'static str, RangeInput>>,
     pub mag_input: String,
     pub stat_ranges: HashMap<&'static str, RangeInput>,
 }
@@ -41,7 +39,7 @@ impl Default for EnemyFilterState {
     fn default() -> Self {
         Self {
             is_open: false,
-            active_icons: HashSet::new(),
+            active_identities: HashSet::new(),
             match_mode: MatchMode::And,
             adv_ranges: HashMap::new(),
             mag_input: String::new(),
@@ -52,7 +50,7 @@ impl Default for EnemyFilterState {
 
 impl EnemyFilterState {
     pub fn is_active(&self) -> bool {
-        !self.active_icons.is_empty()
+        !self.active_identities.is_empty()
             || self.stat_ranges.values().any(|r| !r.min.is_empty() || !r.max.is_empty())
     }
 }
@@ -70,16 +68,12 @@ pub fn get_stat_value(s: &Battle, stat: &str, anim_frames: i32, mag: i32) -> i32
     0
 }
 
-pub fn get_icon_name(icon: AbilityIcon) -> String {
-    REGISTRY.iter()
-        .find(|d| get_display_def(d.identity).icon == icon)
-        .map(|d| get_display_def(d.identity).name)
-        .unwrap_or("Unknown")
-        .to_string()
+pub fn get_identity_name(identity: Identity) -> String {
+    get_display_def(identity).name.to_string()
 }
 
-pub fn has_trait_or_ability(s: &Battle, icon: AbilityIcon) -> bool {
-    REGISTRY.iter().find(|d| get_display_def(d.identity).icon == icon).is_some_and(|def| {
+pub fn has_trait_or_ability(s: &Battle, identity: Identity) -> bool {
+    REGISTRY.iter().find(|d| d.identity == identity).is_some_and(|def| {
         !(def.attributes)(s).is_empty()
     })
 }
@@ -87,9 +81,9 @@ pub fn has_trait_or_ability(s: &Battle, icon: AbilityIcon) -> bool {
 pub fn entity_passes_filter(enemy: &EnemyEntry, filter: &EnemyFilterState) -> bool {
     let mag = filter.mag_input.parse::<i32>().unwrap_or(100);
     let has_stat_filters = filter.stat_ranges.values().any(|r| !r.min.is_empty() || !r.max.is_empty());
-    let has_icon_filters = !filter.active_icons.is_empty();
+    let has_identity_filters = !filter.active_identities.is_empty();
 
-    if !has_stat_filters && !has_icon_filters {
+    if !has_stat_filters && !has_identity_filters {
         return true;
     }
 
@@ -116,17 +110,17 @@ pub fn entity_passes_filter(enemy: &EnemyEntry, filter: &EnemyFilterState) -> bo
         }
     }
 
-    if has_icon_filters {
-        for &ability_icon in &filter.active_icons {
+    if has_identity_filters {
+        for &identity in &filter.active_identities {
             active_conditions += 1;
 
-            let has_inherent = has_trait_or_ability(stats, ability_icon);
-            let mut icon_passed = false;
+            let has_inherent = has_trait_or_ability(stats, identity);
+            let mut identity_passed = false;
 
-            let ability_def = REGISTRY.iter().find(|d| get_display_def(d.identity).icon == ability_icon);
+            let ability_def = REGISTRY.iter().find(|d| d.identity == identity);
 
             if has_inherent {
-                if let Some(adv_map) = filter.adv_ranges.get(&ability_icon) {
+                if let Some(adv_map) = filter.adv_ranges.get(&identity) {
                     let mut build_passed_all_attrs = true;
 
                     let attrs = ability_def.map(|def| (def.attributes)(stats)).unwrap_or_default();
@@ -159,14 +153,14 @@ pub fn entity_passes_filter(enemy: &EnemyEntry, filter: &EnemyFilterState) -> bo
                     }
 
                     if build_passed_all_attrs {
-                        icon_passed = true;
+                        identity_passed = true;
                     }
                 } else {
-                    icon_passed = true;
+                    identity_passed = true;
                 }
             }
 
-            if icon_passed {
+            if identity_passed {
                 passed_conditions += 1;
             } else {
                 failed_conditions += 1;

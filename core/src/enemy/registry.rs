@@ -193,22 +193,6 @@ fn fmt_sage(param: &Param) -> String {
 
 pub fn get_display_def(identity: Identity) -> EnemyAbilityDisplayDef {
     match identity {
-        // --- HIDDEN ---
-        Identity::SingleAttack => EnemyAbilityDisplayDef {
-            name: "Single Attack",
-            fallback: "Sngl",
-            icon: AbilityIcon::Standard(img015::ICON_SINGLE_ATTACK),
-            group: DisplayGroup::Hidden,
-            formatter: |_,_,_,_,_| "".into(),
-        },
-        Identity::AreaAttack => EnemyAbilityDisplayDef {
-            name: "Area Attack",
-            fallback: "Area",
-            icon: AbilityIcon::Standard(img015::ICON_AREA_ATTACK),
-            group: DisplayGroup::Hidden,
-            formatter: |_,_,_,_,_| "".into(),
-        },
-
         // --- TYPES ---
         Identity::TypeRed => EnemyAbilityDisplayDef {
             name: "Red",
@@ -398,6 +382,36 @@ pub fn get_display_def(identity: Identity) -> EnemyAbilityDisplayDef {
         },
 
         // --- BODY 1 ---
+        Identity::SingleAttack => EnemyAbilityDisplayDef {
+            name: "Single Attack",
+            fallback: "Sngl",
+            icon: AbilityIcon::Standard(img015::ICON_SINGLE_ATTACK),
+            group: DisplayGroup::Body1,
+            formatter: |_, stats, _, _, _| {
+                let tba = fmt_time(stats.time_between_attacks);
+                if stats.attack_2 > 0 {
+                    format!("Time between attacks {}", tba)
+                } else {
+                    let tbh = fmt_time(stats.time_until_attack_1);
+                    format!("Time between attacks {}\nTime before hit {}", tba, tbh)
+                }
+            },
+        },
+        Identity::AreaAttack => EnemyAbilityDisplayDef {
+            name: "Area Attack",
+            fallback: "Area",
+            icon: AbilityIcon::Standard(img015::ICON_AREA_ATTACK),
+            group: DisplayGroup::Body1,
+            formatter: |_, stats, _, _, _| {
+                let tba = fmt_time(stats.time_between_attacks);
+                if stats.attack_2 > 0 {
+                    format!("Time between attacks {}", tba)
+                } else {
+                    let tbh = fmt_time(stats.time_until_attack_1);
+                    format!("Time between attacks {}\nTime before hit {}", tba, tbh)
+                }
+            },
+        },
         Identity::MultiHit => EnemyAbilityDisplayDef {
             name: "Multi-Hit",
             fallback: "Multi",
@@ -776,21 +790,6 @@ pub const ENEMY_STATS_REGISTRY: &[EnemyStatsDef] = &[
             (effective_foreswing + cooldown_frames).max(animation_frames)
         },
         formatter: |cycle| format!("{}f", cycle),
-    },
-    EnemyStatsDef {
-        name: "Atk Type",
-        display_name: "Atk Type",
-        get_value: |stats, _, _| stats.area_attack,
-        formatter: |atk_type| if atk_type == 0 { "Single".to_string() } else { "Area".to_string() },
-    },
-    EnemyStatsDef {
-        name: "Endure",
-        display_name: "Endure",
-        get_value: |stats, _, magnification| {
-            let hp = (stats.hitpoints as f32 * (magnification.hitpoints as f32 / 100.0)).round() as i32;
-            if stats.knockbacks > 0 { (hp as f32 / stats.knockbacks as f32).round() as i32 } else { hp }
-        },
-        formatter: |endure| format!("{}", endure),
     },
     EnemyStatsDef {
         name: "Cash Drop",
