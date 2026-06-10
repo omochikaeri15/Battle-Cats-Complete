@@ -308,7 +308,7 @@ fn build_statblock_image(
     let r2_hy = current_y_global + (row_height * 2) + (gap * 2);
     let r2_dy = current_y_global + (row_height * 3) + (gap * 3);
 
-    let mut render_row = |ui_img: &mut RgbaImage, headers: &[String], row_data: &[StatCell], h_y: i32, d_y: i32| {
+    let render_row = |ui_img: &mut RgbaImage, headers: &[String], row_data: &[StatCell], h_y: i32, d_y: i32| {
         for col in 0..headers.len() {
             let current_x = padding + ((col as i32) * (col_w + gap));
 

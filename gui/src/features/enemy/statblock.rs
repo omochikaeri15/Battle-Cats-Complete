@@ -24,7 +24,6 @@ pub fn build_enemy_statblock(
         get_enemy_stat("Dps").display_name.to_string(),
         get_enemy_stat("Range").display_name.to_string(),
         get_enemy_stat("Atk Cycle").display_name.to_string(),
-        get_enemy_stat("Atk Type").display_name.to_string(),
     ];
 
     let data_1 = vec![
@@ -32,14 +31,12 @@ pub fn build_enemy_statblock(
         StatCell::Text(format_enemy_stat("Dps", ctx.stats, frames, ctx.magnification)),
         StatCell::Text(format_enemy_stat("Range", ctx.stats, frames, ctx.magnification)),
         StatCell::Frames(cycle),
-        StatCell::Text(format_enemy_stat("Atk Type", ctx.stats, frames, ctx.magnification)),
     ];
 
     let headers_2 = vec![
         get_enemy_stat("Hitpoints").display_name.to_string(),
         get_enemy_stat("Knockbacks").display_name.to_string(),
         get_enemy_stat("Speed").display_name.to_string(),
-        get_enemy_stat("Endure").display_name.to_string(),
         get_enemy_stat("Cash Drop").display_name.to_string(),
     ];
 
@@ -47,7 +44,6 @@ pub fn build_enemy_statblock(
         StatCell::Text(format_enemy_stat("Hitpoints", ctx.stats, frames, ctx.magnification)),
         StatCell::Text(format_enemy_stat("Knockbacks", ctx.stats, frames, ctx.magnification)),
         StatCell::Text(format_enemy_stat("Speed", ctx.stats, frames, ctx.magnification)),
-        StatCell::Text(format_enemy_stat("Endure", ctx.stats, frames, ctx.magnification)),
         StatCell::Text(format_enemy_stat("Cash Drop", ctx.stats, frames, ctx.magnification)),
     ];
 

@@ -143,7 +143,7 @@ pub fn build_spirit_data(
         && let Some(c_vec) = stats::load_from_id(ctx.base_stats.conjure_unit_id, &settings.general.language_priority)
             && let Some(c_stats) = c_vec.first() {
                 let conjure_final = stats::get_final_stats(c_stats, ctx.level_curve, ctx.current_level, None, None);
-                
+
                 let spirit_ctx = CatRenderContext {
                     global: ctx.global,
                     base_stats: c_stats,
@@ -154,9 +154,9 @@ pub fn build_spirit_data(
                     talent_levels: None,
                     is_conjure_unit: true,
                 };
-                
+
                 let (s_traits, s_h1, s_h2, s_b1, s_b2, s_footer) = abilities::collect_ability_data(&spirit_ctx);
-                
+
                 return Some(SpiritData {
                     dmg_text: format!("Damage: {}\nRange: {}", conjure_final.attack_1, conjure_final.standing_range),
                     traits: s_traits,
