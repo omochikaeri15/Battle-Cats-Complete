@@ -29,6 +29,7 @@ pub fn cleanup_temp_files() {
 
 #[cfg(unix)]
 fn restart_app() {
+    tracing::info!("Executing unix restart sequence");
     let Ok(exe) = std::env::current_exe() else { return; };
     let path = exe.to_string_lossy();
     let clean_path = path.trim_end_matches(" (deleted)");
@@ -42,6 +43,7 @@ fn restart_app() {
 
 #[cfg(not(unix))]
 fn restart_app() {
+    tracing::info!("Executing non-unix restart sequence");
     let Ok(exe) = std::env::current_exe() else { return; };
     let _ = Command::new(exe).spawn();
     std::process::exit(0);
@@ -91,15 +93,26 @@ impl Updater {
         let is_valid_state = matches!(self.status, UpdateStatus::Idle | UpdateStatus::UpToDate | UpdateStatus::CheckFailed);
         if !is_valid_state { return; }
 
+        tracing::info!("Checking Github for releases...");
+
         let tx = self.tx.clone();
         self.status = UpdateStatus::Checking;
 
         thread::spawn(move || {
             match check_remote() {
-                Ok(Some(release)) => { let _ = tx.send(UpdaterMsg::UpdateFound(release)); },
-                Ok(None) if is_manual => { let _ = tx.send(UpdaterMsg::UpToDate); },
+                Ok(Some(release)) => {
+                    tracing::info!("Found new release: {}", release.version);
+                    let _ = tx.send(UpdaterMsg::UpdateFound(release));
+                },
+                Ok(None) if is_manual => {
+                    tracing::info!("Software is up to date");
+                    let _ = tx.send(UpdaterMsg::UpToDate);
+                },
                 Ok(None) => { let _ = tx.send(UpdaterMsg::SilentFail); },
-                Err(_) if is_manual => { let _ = tx.send(UpdaterMsg::CheckFailed); }
+                Err(e) if is_manual => {
+                    tracing::error!("Update check failed: {}", e);
+                    let _ = tx.send(UpdaterMsg::CheckFailed);
+                }
                 Err(_) => { let _ = tx.send(UpdaterMsg::SilentFail); }
             }
 
@@ -111,6 +124,8 @@ impl Updater {
         let tx = self.tx.clone();
         let version = release.version.clone();
         self.status = UpdateStatus::Downloading(version.clone());
+
+        tracing::info!("Initializing download process for version: {}", version);
 
         thread::spawn(move || {
             cleanup_temp_files();
@@ -136,16 +151,19 @@ impl Updater {
                 .target(target_asset_name)
                 .build() else {
                 cleanup_temp_files();
+                tracing::error!("Failed to build download configurator");
                 let _ = tx.send(UpdaterMsg::CheckFailed);
                 return;
             };
 
             if update_box.update().is_err() {
                 cleanup_temp_files();
+                tracing::error!("Failed during update installation sequence");
                 let _ = tx.send(UpdaterMsg::CheckFailed);
                 return;
             }
 
+            tracing::info!("Download and extraction finished");
             cleanup_temp_files();
             let _ = tx.send(UpdaterMsg::DownloadFinished(version));
         });
@@ -266,6 +284,7 @@ impl Updater {
 
         if start_download { self.download_and_install(release); }
         if disable_future {
+            tracing::info!("User selected Never update, changing mode to Ignore");
             settings.general.update_mode = UpdateMode::Ignore;
             close_modal = true;
         }

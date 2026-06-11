@@ -16,18 +16,25 @@ impl BattleCatsApp {
     pub fn new(creation_context: &eframe::CreationContext<'_>) -> Self {
         let mut app: Self = json::load("settings.json").unwrap_or_default();
 
+        crate::app::tracing::init(app.settings.general.enable_logging);
+        tracing::info!("Starting initialization sequence...");
+
         #[cfg(target_os = "linux")]
         {
+            tracing::debug!("Syncing Linux desktop data");
             let _ = core::settings::logic::desktop::sync_desktop_data();
         }
 
         lang::ensure_complete_list(&mut app.settings.general.language_priority);
 
+        tracing::debug!("Setting up custom fonts");
         setup_custom_fonts(&creation_context.egui_ctx);
 
+        tracing::debug!("Refreshing mod state and cleaning up temp update files");
         app.mod_state.data.refresh_mods();
         updater::cleanup_temp_files();
 
+        tracing::info!("Loading core param tables");
         app.param = load_param(Path::new("game/tables"), &app.settings.general.language_priority).unwrap_or_default();
 
         let mut expected_hash = 0;
@@ -35,6 +42,7 @@ impl BattleCatsApp {
         let priority = &app.settings.general.language_priority;
 
         if let Some((hash, cached_cats)) = core::global::io::cache::load_with_hash::<Vec<core::cat::logic::scanner::CatEntry>>("cats_cache.bin") {
+            tracing::info!("Found cats_cache.bin (Hash: {})", hash);
             expected_hash = hash;
             needs_validation = true;
             let cats_directory = Path::new(cat_paths::DIR_CATS);
@@ -48,21 +56,26 @@ impl BattleCatsApp {
             }).collect();
             app.cat_list_state.data.initialized = true;
         } else {
+            tracing::info!("No cats_cache.bin found, triggering full cat scan");
             app.cat_list_state.data.restart_scan(app.settings.scanner_config());
         }
 
         if let Some((hash, cached_enemies)) = core::global::io::cache::load_with_hash::<Vec<core::enemy::logic::scanner::EnemyEntry>>("enemies_cache.bin") {
+            tracing::info!("Found enemies_cache.bin (Hash: {})", hash);
             expected_hash = hash;
             needs_validation = true;
             app.enemy_list_state.data.enemies = cached_enemies;
             app.enemy_list_state.data.initialized = true;
         } else {
+            tracing::info!("No enemies_cache.bin found, triggering full enemy scan");
             app.enemy_list_state.data.restart_scan(app.settings.scanner_config());
         }
 
+        tracing::info!("Triggering full stage scan");
         app.stage_list_state.data.restart_scan(app.settings.scanner_config());
 
         if needs_validation {
+            tracing::debug!("Spawning hash validation thread");
             let (transmitter, receiver) = std::sync::mpsc::channel();
             app.hash_rx = Some(receiver);
             let active_mod = core::global::resolver::get_active_mod();
@@ -74,9 +87,11 @@ impl BattleCatsApp {
         }
 
         if app.settings.general.update_mode != UpdateMode::Ignore {
+            tracing::info!("Checking for app updates at startup");
             app.updater.check_for_updates(creation_context.egui_ctx.clone(), false);
         }
 
+        tracing::info!("Initialization sequence complete");
         app
     }
 }

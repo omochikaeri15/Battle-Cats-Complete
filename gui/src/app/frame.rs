@@ -74,6 +74,7 @@ pub fn draw(app: &mut BattleCatsApp, ctx: &egui::Context) {
     }
 
     if app.mod_state.data.needs_rescan {
+        tracing::info!("Mod state flagged needs_rescan, initiating full data reload");
         app.mod_state.data.needs_rescan = false;
         app.perform_full_data_reload();
         ctx.request_repaint();
@@ -105,6 +106,7 @@ pub fn draw(app: &mut BattleCatsApp, ctx: &egui::Context) {
         Page::Settings => {
             let refresh_needed = show_settings(ctx, &mut app.settings, &mut app.drag_guard);
             if refresh_needed {
+                tracing::info!("Settings change requested a UI refresh");
                 app.perform_full_data_reload();
                 ctx.request_repaint();
             }
@@ -156,6 +158,7 @@ pub fn draw(app: &mut BattleCatsApp, ctx: &egui::Context) {
                                     continue;
                                 }
 
+                                tracing::debug!("Navigating to page: {}", page_enum.tab_name());
                                 app.current_page = *page_enum;
                                 app.settings.runtime.show_ip_field = false;
                             }

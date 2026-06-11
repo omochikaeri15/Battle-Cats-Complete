@@ -15,9 +15,10 @@ pub mod startup;
 pub mod frame;
 pub mod reload;
 pub mod events;
+pub mod tracing;
 
 #[derive(serde::Deserialize, serde::Serialize)]
-#[serde(default)] 
+#[serde(default)]
 pub struct BattleCatsApp {
     #[serde(skip)] pub(crate) current_page: frame::Page,
     #[serde(skip)] pub(crate) sidebar_open: bool,
@@ -26,9 +27,9 @@ pub struct BattleCatsApp {
     #[serde(skip)] pub(crate) drag_guard: DragGuard,
     #[serde(skip)] pub(crate) global_watcher: Option<GuiWatcher>,
     #[serde(skip)] pub param: Param,
-    
+
     #[serde(skip)] pub hash_rx: Option<std::sync::mpsc::Receiver<bool>>,
-    
+
     pub(crate) cat_list_state: CatListState,
     pub(crate) enemy_list_state: EnemyListState,
     pub(crate) stage_list_state: StageListState,
@@ -58,24 +59,27 @@ impl Default for BattleCatsApp {
 
 impl eframe::App for BattleCatsApp {
     fn save(&mut self, _storage: &mut dyn eframe::Storage) {
+        ::tracing::debug!("Saving settings to settings.json");
         json::save("settings.json", self);
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if let Some(rx) = &self.hash_rx
             && let Ok(is_valid) = rx.try_recv() {
-                self.hash_rx = None;
-                if !is_valid {
-                    self.perform_full_data_reload();
-                    ctx.request_repaint();
-                } else {
-                    self.cat_list_state.cat_list.force_search_rebuild();
-                    self.enemy_list_state.enemy_list.force_search_rebuild();
-                }
+            self.hash_rx = None;
+            if !is_valid {
+                ::tracing::warn!("Cache hash validation failed! Performing full data reload.");
+                self.perform_full_data_reload();
+                ctx.request_repaint();
+            } else {
+                ::tracing::info!("Cache hash validation passed.");
+                self.cat_list_state.cat_list.force_search_rebuild();
+                self.enemy_list_state.enemy_list.force_search_rebuild();
             }
+        }
 
         self.updater.update_state(ctx);
-        
+
         let status_str = match self.updater.status {
             crate::updater::UpdateStatus::Checking => "Checking",
             crate::updater::UpdateStatus::UpToDate => "UpToDate",
@@ -88,12 +92,13 @@ impl eframe::App for BattleCatsApp {
         ctx.data_mut(|data| data.insert_temp(egui::Id::new("updater_status"), status_str));
 
         if self.settings.runtime.manual_check_requested {
+            ::tracing::info!("Manual update check requested by user");
             self.settings.runtime.manual_check_requested = false;
             self.updater.check_for_updates(ctx.clone(), true);
         }
 
         self.updater.show_ui(ctx, &mut self.settings, &mut self.drag_guard);
-        
+
         self.process_file_events(ctx);
 
         self.cat_list_state.data.update_data();
@@ -105,9 +110,10 @@ impl eframe::App for BattleCatsApp {
         if self.cat_list_state.data.scan_receiver.is_some() || self.enemy_list_state.data.scan_receiver.is_some() || self.stage_list_state.data.scan_receiver.is_some() {
             ctx.request_repaint();
         }
-        
+
         let import_finished = self.import_state.update(ctx);
         if import_finished {
+            ::tracing::info!("Import job finished, performing full data reload");
             self.perform_full_data_reload();
             ctx.request_repaint();
         }

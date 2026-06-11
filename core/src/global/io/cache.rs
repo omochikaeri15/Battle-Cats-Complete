@@ -23,7 +23,7 @@ pub fn get_cache_dir() -> Option<PathBuf> {
 
 fn hash_directory_parallel(directory_path: &Path) -> u64 {
     if !directory_path.exists() { return 0; }
-    
+
     let mut file_entries = Vec::new();
     if let Ok(read_directory) = fs::read_dir(directory_path) {
         for directory_entry in read_directory.flatten() {
@@ -32,7 +32,7 @@ fn hash_directory_parallel(directory_path: &Path) -> u64 {
     }
 
     let child_hashes: Vec<u64> = file_entries.par_iter().map(|child_path| {
-        let mut local_hasher = FxHasher::default(); 
+        let mut local_hasher = FxHasher::default();
         if child_path.is_dir() {
             let subdirectory_hash = hash_directory_parallel(child_path);
             subdirectory_hash.hash(&mut local_hasher);
@@ -53,13 +53,13 @@ fn hash_directory_parallel(directory_path: &Path) -> u64 {
 
 pub fn get_game_hash(active_mod: Option<&str>) -> u64 {
     let mut final_game_hasher = FxHasher::default();
-    
+
     let target_paths = ["game/tables", "game/cats", "game/enemies", "mods"];
     for path_string in target_paths {
         let directory_hash = hash_directory_parallel(Path::new(path_string));
         directory_hash.hash(&mut final_game_hasher);
     }
-    
+
     if let Some(mod_name) = active_mod {
         mod_name.hash(&mut final_game_hasher);
     } else {

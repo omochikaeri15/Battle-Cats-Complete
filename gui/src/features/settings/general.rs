@@ -122,6 +122,21 @@ pub fn show(ui_container: &mut egui::Ui, settings: &mut GeneralSettings, runtime
             scroll_ui.add_space(20.0);
             scroll_ui.heading("Behavior");
             scroll_ui.add_space(5.0);
+            
+            scroll_ui.horizontal(|horizontal_ui| {
+                let toggle_resp = toggle_ui(horizontal_ui, &mut settings.enable_logging);
+                let label_resp = horizontal_ui.label("Enable Logging");
+
+                if toggle_resp.changed() {
+                    refresh_needed = true;
+                }
+
+                let hint = "Enables logs for easy debugging\nDisable to improve performance\nDevs may refuse to debug without logs";
+                toggle_resp.on_hover_text(hint);
+                label_resp.on_hover_text(hint);
+            });
+
+            scroll_ui.add_space(5.0);
 
             let features_available = nightly::NIGHTLY_FEATURES_ACTIVE.load(Ordering::Relaxed);
 

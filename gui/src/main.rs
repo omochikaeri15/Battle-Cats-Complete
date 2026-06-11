@@ -6,8 +6,14 @@ mod features;
 mod global;
 
 use eframe::egui;
+use std::panic;
+use std::fs;
 
 fn main() -> eframe::Result<()> {
+    panic::set_hook(Box::new(|panic_info| {
+        let msg = format!("Battle Cats Complete crashed!\n{}\n", panic_info);
+        let _ = fs::write("crash.txt", msg);
+    }));
 
     let icon = load_icon();
 

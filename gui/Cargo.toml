@@ -22,6 +22,9 @@ imageproc = "0.25.0"
 ab_glyph = "0.2"
 arboard = "3.4.0"
 notify = "8.2.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+directories = "5.0.1"
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"

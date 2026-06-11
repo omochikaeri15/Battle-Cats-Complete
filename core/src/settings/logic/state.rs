@@ -30,6 +30,7 @@ pub struct GeneralSettings {
     pub language_priority: Vec<String>,
     pub update_mode: UpdateMode,
     pub enable_nightly: bool,
+    pub enable_logging: bool,
 }
 
 impl Default for GeneralSettings {
@@ -38,6 +39,7 @@ impl Default for GeneralSettings {
             language_priority: lang::default_priority(),
             update_mode: UpdateMode::default(),
             enable_nightly: false,
+            enable_logging: true,
         }
     }
 }

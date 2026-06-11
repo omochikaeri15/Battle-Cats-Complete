@@ -4,6 +4,8 @@ use core::global::game::param::load_param;
 
 impl BattleCatsApp {
     pub fn perform_full_data_reload(&mut self) {
+        tracing::info!("Executing perform_full_data_reload");
+
         self.cat_list_state.texture_cache_version += 1;
         self.cat_list_state.anim_viewer.loaded_id.clear();
         self.cat_list_state.detail_texture = None;
@@ -32,6 +34,8 @@ impl BattleCatsApp {
         }
 
         let config = self.settings.scanner_config();
+
+        tracing::debug!("Clearing caches and restarting data scans");
         self.cat_list_state.cat_list.clear_cache();
         self.cat_list_state.data.restart_scan(config.clone());
 
@@ -41,6 +45,7 @@ impl BattleCatsApp {
         self.stage_list_state.data.registry.clear_cache();
         self.stage_list_state.data.restart_scan(config);
 
+        tracing::debug!("Reloading core param table");
         self.param = load_param(Path::new("game/tables"), &self.settings.general.language_priority).unwrap_or_default();
     }
 }

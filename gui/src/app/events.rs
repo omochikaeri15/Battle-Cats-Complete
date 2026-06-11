@@ -29,6 +29,8 @@ impl BattleCatsApp {
         if self.import_state.config.import_rx.is_some() || self.import_state.config.import_job_status.load(Ordering::Relaxed) == 1 { return; }
         if self.import_state.config.export_rx.is_some() || self.import_state.config.export_job_status.load(Ordering::Relaxed) == 1 { return; }
 
+        tracing::trace!("File watcher received {} paths to process", paths.len());
+
         let mut cat_ids_to_refresh = HashSet::new();
         let mut enemy_ids_to_refresh = HashSet::new();
         let mut mod_icons_to_refresh = HashSet::new();
@@ -49,6 +51,8 @@ impl BattleCatsApp {
             let path_str = path.to_string_lossy().to_lowercase();
             let file_name = path.file_name().and_then(|name| name.to_str()).unwrap_or("");
 
+            tracing::trace!("Processing modified path: {}", path_str);
+
             let is_mod_path = path_str.contains("mods") && !path_str.contains("packages");
             if is_mod_path {
                 mods_refresh = true;
@@ -58,9 +62,9 @@ impl BattleCatsApp {
 
                 if path_str.contains("icons") && (file_name == "icon.png")
                     && let Some(mods_idx) = path.components().position(|c| c.as_os_str().to_string_lossy().to_lowercase() == "mods")
-                        && let Some(mod_folder) = path.components().nth(mods_idx + 1) {
-                            mod_icons_to_refresh.insert(mod_folder.as_os_str().to_string_lossy().into_owned());
-                        }
+                    && let Some(mod_folder) = path.components().nth(mods_idx + 1) {
+                    mod_icons_to_refresh.insert(mod_folder.as_os_str().to_string_lossy().into_owned());
+                }
             }
 
             if path_str.contains("img015") || path_str.contains("img022") {
@@ -108,17 +112,19 @@ impl BattleCatsApp {
         }
 
         if mods_refresh {
+            tracing::debug!("Refreshing UI mods list");
             self.mod_state.data.refresh_mods();
         }
 
         if !mod_icons_to_refresh.is_empty()
             && let Some(list) = &mut self.mod_state.list {
-                for mod_name in mod_icons_to_refresh {
-                    list.flush_icon(&mod_name);
-                }
+            for mod_name in mod_icons_to_refresh {
+                list.flush_icon(&mod_name);
             }
+        }
 
         if active_mod_file_changed || global_cat_refresh || global_enemy_refresh || global_stage_refresh {
+            tracing::info!("Global files or active mod changed. Triggering full reload.");
             self.perform_full_data_reload();
             ctx.request_repaint();
             return;
@@ -127,6 +133,7 @@ impl BattleCatsApp {
         let mass_threshold = 5;
 
         if cat_ids_to_refresh.len() > mass_threshold {
+            tracing::debug!("Mass threshold exceeded for cats, resyncing scan...");
             self.cat_list_state.detail_texture = None;
             self.cat_list_state.data.detail_key.clear();
             self.cat_list_state.texture_cache_version += 1;
@@ -145,6 +152,7 @@ impl BattleCatsApp {
         }
 
         if enemy_ids_to_refresh.len() > mass_threshold {
+            tracing::debug!("Mass threshold exceeded for enemies, resyncing scan...");
             self.enemy_list_state.detail_texture = None;
             self.enemy_list_state.data.detail_key.clear();
             enemy_loader::resync_scan(&mut self.enemy_list_state.data, self.settings.scanner_config());
@@ -160,8 +168,9 @@ impl BattleCatsApp {
         }
 
         if (!cat_ids_to_refresh.is_empty() || !enemy_ids_to_refresh.is_empty() || global_cat_refresh || global_enemy_refresh || global_stage_refresh)
-            && !core::global::resolver::is_mod_active() {
+            && !resolver::is_mod_active() {
 
+            tracing::debug!("Updating vanilla cache bins in background thread");
             let cats = self.cat_list_state.data.cats.clone();
             let enemies = self.enemy_list_state.data.enemies.clone();
 
