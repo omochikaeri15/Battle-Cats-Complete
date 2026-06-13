@@ -7,9 +7,6 @@ authors.workspace = true
 repository.workspace = true
 publish = false
 
-[features]
-nightly = ["core/nightly"]
-
 [dependencies]
 nyanko = { path = "../lib" }
 core = { path = "../core" }
