@@ -46,7 +46,10 @@ fn main() {
     if is_lockfile_dirty() {
         println!("> Cargo.lock modified by update. Committing...");
         run_git(&["add", "Cargo.lock"]);
-        run_git(&["commit", "-m", "xtask: Cargo.lock"]);
+        run_git(&["commit", "--amend", "--no-edit"]);
+
+        println!("> Syncing amended history to remote nightly...");
+        run_git(&["push", "origin", "nightly", "--force-with-lease"]);
     } else {
         println!("> Nyanko is already up-to-date. No lockfile changes.");
     }
