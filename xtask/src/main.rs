@@ -12,8 +12,44 @@ fn run_git(args: &[&str]) {
     }
 }
 
+fn run_cargo(args: &[&str]) {
+    let status = Command::new("cargo")
+        .args(args)
+        .status()
+        .expect("Failed to execute cargo command");
+
+    if !status.success() {
+        eprintln!("Error: 'cargo {}' failed. Aborting release.", args.join(" "));
+        exit(1);
+    }
+}
+
+fn is_lockfile_dirty() -> bool {
+    let output = Command::new("git")
+        .args(&["status", "--porcelain", "Cargo.lock"])
+        .output()
+        .expect("Failed to execute git status");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    !stdout.trim().is_empty()
+}
+
 fn main() {
     println!("Starting BCC Release...");
+
+    println!("> Pulling latest nyanko commits...");
+    run_cargo(&["update", "-p", "nyanko"]);
+
+    println!("> Verifying build state with cargo check...");
+    run_cargo(&["check"]);
+
+    if is_lockfile_dirty() {
+        println!("> Cargo.lock modified by update. Committing...");
+        run_git(&["add", "Cargo.lock"]);
+        run_git(&["commit", "-m", "xtask: Cargo.lock"]);
+    } else {
+        println!("> Nyanko is already up-to-date. No lockfile changes.");
+    }
 
     println!("> Checking out main and pulling latest changes...");
     run_git(&["checkout", "main"]);
@@ -28,5 +64,5 @@ fn main() {
     println!("> Returning to nightly branch...");
     run_git(&["checkout", "nightly"]);
 
-    println!("Release successful! Branches are even.");
+    println!("Release successful! Branches are even and dependencies are up-to-date.");
 }

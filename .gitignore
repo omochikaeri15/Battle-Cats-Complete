@@ -1,7 +1,6 @@
 # Rust Build Artifacts
 /target/
 **/*.rs.bk
-Cargo.lock
 
 # Debugging
 Battle Cats Complete.exe
