@@ -3,7 +3,6 @@ resolver = "2"
 members = [
     "core",
     "gui",
-    "lib",
     #"cli",
     "xtask",
 ]
@@ -13,8 +12,10 @@ version = "0.16.1"
 edition = "2024"
 license-file = "LICENSE"
 authors = ["omochikaeri15 <251449262+omochikaeri15@users.noreply.github.com>"]
-repository = "https://github.com/omochikaeri15/Battle-Cats-Complete"
+repository = "https://github.com/omochikaeri15/battle-cats-complete"
 
+[workspace.dependencies]
+nyanko = { git = "https://github.com/omochikaeri15/nyanko" }
 
 [profile.release]
 strip = true

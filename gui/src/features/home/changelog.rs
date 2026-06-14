@@ -49,7 +49,7 @@ pub fn link(ui: &mut egui::Ui, ctx: &egui::Context) {
             let ctx_clone = ctx.clone();
             let current_version = env!("CARGO_PKG_VERSION");
             let repo_owner = "omochikaeri15";
-            let repo_name = "Battle-Cats-Complete";
+            let repo_name = "battle-cats-complete";
 
             thread::spawn(move || {
                 let releases_result = self_update::backends::github::ReleaseList::configure()

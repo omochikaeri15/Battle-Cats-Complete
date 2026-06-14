@@ -8,7 +8,7 @@ repository.workspace = true
 publish = false
 
 [dependencies]
-nyanko = { path = "../lib" }
+nyanko = { workspace = true }
 core = { path = "../core" }
 eframe = { version = "0.29", features = ["persistence", "glow"] }
 image = { version = "0.25", features = ["png", "ico"] }

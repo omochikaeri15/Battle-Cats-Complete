@@ -8,7 +8,7 @@ repository.workspace = true
 publish = false
 
 [dependencies]
-nyanko = { path = "../lib", features = ["pack", "graphics"] }
+nyanko = { workspace = true, features = ["pack", "graphics"] }
 image = { version = "0.25", features = ["png", "ico"] }
 zip = "2"
 tar = "0.4"

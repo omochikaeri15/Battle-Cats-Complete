@@ -31,7 +31,7 @@ pub fn show(ctx: &egui::Context, drag_guard: &mut DragGuard) {
 
             let current_version = env!("CARGO_PKG_VERSION");
             let tag = format!("v{}", current_version);
-            let release_url = format!("https://github.com/omochikaeri15/Battle-Cats-Complete/releases/tag/{}", tag);
+            let release_url = format!("https://github.com/omochikaeri15/battle-cats-complete/releases/tag/{}", tag);
 
             ui.horizontal(|ui| {
                 ui.hyperlink_to(&tag, release_url);
@@ -53,7 +53,7 @@ pub fn show(ctx: &egui::Context, drag_guard: &mut DragGuard) {
                 
                 ui.hyperlink_to("Discord", "https://discord.com/invite/SNSE8HNhmP").clicked();
                 ui.label("|");
-                ui.hyperlink_to("GitHub", "https://github.com/omochikaeri15/Battle-Cats-Complete");
+                ui.hyperlink_to("GitHub", "https://github.com/omochikaeri15/battle-cats-complete");
             });
         });
 

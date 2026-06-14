@@ -9,7 +9,7 @@ use core::settings::logic::{Settings, upd::UpdateMode};
 use crate::global::shared::DragGuard;
 
 const REPO_OWNER: &str = "omochikaeri15";
-const REPO_NAME: &str = "Battle-Cats-Complete";
+const REPO_NAME: &str = "battle-cats-complete";
 const BIN_NAME: &str = "Battle Cats Complete";
 
 const PROMPT_BUTTON_SIZE: [f32; 2] = [80.0, 40.0];
