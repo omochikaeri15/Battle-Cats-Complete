@@ -16,11 +16,11 @@ pub fn init(enable_logging: bool) {
     let debug_file = find_override_file(&cwd, &["debug.txt", "debug"]);
 
     let app_dir = BaseDirs::new().map(|base| base.data_local_dir().join("battle_cats_complete"));
-
+    
     let (log_level, filter_directive, file_path) = if let Some(path) = trace_file {
-        (tracing::Level::TRACE, "info,gui=trace,core=trace,nyanko=trace", path)
+        (tracing::Level::TRACE, "info,gui=trace,core=trace,nyanko=trace,zbus=error", path)
     } else if let Some(path) = debug_file {
-        (tracing::Level::DEBUG, "info,gui=debug,core=debug,nyanko=debug", path)
+        (tracing::Level::DEBUG, "info,gui=debug,core=debug,nyanko=debug,zbus=error", path)
     } else if enable_logging {
         let Some(dir) = app_dir else { return };
 
@@ -35,7 +35,7 @@ pub fn init(enable_logging: bool) {
             let _ = fs::rename(&log_file, &prev_log);
         }
 
-        (tracing::Level::INFO, "info", log_file)
+        (tracing::Level::INFO, "info,zbus=error", log_file)
     } else {
         if let Some(dir) = app_dir {
             let _ = fs::remove_file(dir.join("logs.txt"));

@@ -353,7 +353,7 @@ pub fn inject_and_build_apk(
 
     let mut inject_file = |local_path: &Path, zip_path: &str, store: bool| -> Result<(), String> {
         if !local_path.exists() { return Ok(()); }
-        debug!("Injecting file: {} (Store mode: {})", zip_path, store);
+        trace!("Injecting file: {} (Store mode: {})", zip_path, store);
 
         let file_data = fs::read(local_path).map_err(|error| error.to_string())?;
         let compression = if store { zip::CompressionMethod::Stored } else { zip::CompressionMethod::Deflated };
@@ -364,6 +364,8 @@ pub fn inject_and_build_apk(
         injected_count += 1;
         Ok(())
     };
+
+    debug!("Beginning to inject files...");
 
     if let Some(manifest) = patched_manifest { inject_file(manifest, "AndroidManifest.xml", false)?; }
     if let Some(arsc) = patched_arsc { inject_file(arsc, "resources.arsc", true)?; }
